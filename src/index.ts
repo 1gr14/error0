@@ -303,7 +303,8 @@ type ErrorPluginResolved = {
   methodEntries: Array<[string, ErrorPluginMethodFn<unknown>]>
 }
 type Error0Mark = string | symbol
-const ERROR0_MARK = Symbol.for('@devp0nt/error0.mark')
+const ERROR0_MARK = Symbol('Error0.mark')
+const SKIP_ADAPT = Symbol('Error0.skipAdapt')
 const RESERVED_STACK_PROP_ERROR = 'Error0: "stack" is a reserved prop key. Use .stack(...) plugin API instead'
 const RESERVED_MESSAGE_PROP_ERROR = 'Error0: "message" is a reserved prop key. Use .message(...) plugin API instead'
 
@@ -713,6 +714,7 @@ export class Error0 extends Error {
   ) {
     const [first, second] = args
     const input = typeof first === 'string' ? { message: first, ...(second ?? {}) } : first
+    const shouldAdapt = !(SKIP_ADAPT in input)
 
     super(input.message || 'Unknown error', { cause: input.cause })
     this.name = 'Error0'
@@ -754,6 +756,9 @@ export class Error0 extends Error {
         const ownValue = typeof prop.init === 'function' ? prop.init(inputValue) : inputValue
         this.assign({ [key]: ownValue } as never)
       }
+    }
+    if (shouldAdapt) {
+      ctor._applyAdapt(this)
     }
     Error0.fixStack(input.cause)
   }
@@ -998,10 +1003,10 @@ export class Error0 extends Error {
   private static _fromSerialized(error: unknown): Error0 {
     const message = this._extractMessage(error)
     if (typeof error !== 'object' || error === null) {
-      return this._applyAdapt(new this(message, { cause: error }))
+      return new this(message, { cause: error })
     }
     const errorRecord = error as Record<string, unknown>
-    const recreated = new this(message)
+    const recreated = new this({ message, [SKIP_ADAPT]: true } as never)
     const plugin = this._getResolvedPlugin()
     for (const [key, prop] of plugin.propEntries) {
       if (prop.deserialize === false) {
@@ -1040,7 +1045,7 @@ export class Error0 extends Error {
 
   private static _fromNonError0(error: unknown): Error0 {
     const message = this._extractMessage(error)
-    return this._applyAdapt(new this(message, { cause: error }))
+    return new this(message, { cause: error })
   }
 
   private static _extractMessage(error: unknown): string {

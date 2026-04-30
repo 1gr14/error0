@@ -797,9 +797,9 @@ describe('Error0', () => {
     expect(error.status).toBe(422)
     expect(error.code).toBe('NOT_FOUND')
     const error1 = new AppError('test', { cause: parsedError })
-    expect(error1.message).toBe('test')
-    expect(error1.status).toBe(undefined)
-    expect(error1.code).toBe(undefined)
+    expect(error1.message).toBe('Validation Error: test')
+    expect(error1.status).toBe(422)
+    expect(error1.code).toBe('NOT_FOUND')
   })
 
   it('adapt message and other props via return output values from plugin', () => {
@@ -826,9 +826,21 @@ describe('Error0', () => {
     expect(error.status).toBe(422)
     expect(error.code).toBe('NOT_FOUND')
     const error1 = new AppError('test', { cause: parsedError })
-    expect(error1.message).toBe('test')
-    expect(error1.status).toBe(undefined)
-    expect(error1.code).toBe(undefined)
+    expect(error1.message).toBe('Validation Error: test')
+    expect(error1.status).toBe(422)
+    expect(error1.code).toBe('NOT_FOUND')
+  })
+
+  it('adapt message and other props on error0 itself', () => {
+    const AppError = Error0.use(statusPlugin)
+      .use(codePlugin)
+      .use('adapt', (error) => {
+        if (error.status === 404 && !error.code) {
+          error.code = 'NOT_FOUND'
+        }
+      })
+    const error = new AppError('test', { status: 404 })
+    expect(error.code).toBe('NOT_FOUND')
   })
 
   it('messages can be combined on serialization', () => {
