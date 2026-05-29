@@ -65,3 +65,8 @@ secrets/
 
 # deprecated
 deprecated*
+
+# Task0
+tasks
+todo.md
+todo.txt
