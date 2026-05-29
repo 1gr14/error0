@@ -6,6 +6,8 @@
 [![npm](https://img.shields.io/npm/v/@devp0nt/error0.svg)](https://www.npmjs.com/package/@devp0nt/error0)
 [![license](https://img.shields.io/npm/l/@devp0nt/error0.svg)](./LICENSE)
 
+<!-- docs:start -->
+
 Errors travel. You throw in one layer and catch in another. Sometimes it's your
 error, sometimes a native `Error`, sometimes an Axios or Zod error, sometimes
 just a string. `error0` turns any of them into one typed class you control. You
@@ -497,6 +499,8 @@ const statusPlugin = () =>
     /* init / resolve / serialize / deserialize */
   })
 ```
+
+<!-- docs:end -->
 
 ## Community
 
