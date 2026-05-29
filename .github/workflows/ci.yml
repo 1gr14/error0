@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main, next]
+  pull_request:
+    branches: [main, next]
 
 permissions:
   contents: write # <-- allows pushing tags/commits
@@ -41,8 +43,11 @@ jobs:
       - name: Lint (eslint)
         run: bun run lint
 
+      - name: Source tests
+        run: bun run test
+
       - name: Build
-        run: bun run build:all
+        run: bun run build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -50,36 +55,25 @@ jobs:
           name: build-files
           path: |
             dist/
-            dist-test/
+            scripts/
             package.json
           retention-days: 1
 
-  test:
+  smoke:
     needs: build
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node:
-          - 18
           - 20
           - 22
           - 24
-        bun:
-          - latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
       - name: Setup Node.js ${{ matrix.node }}
         uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
-
-      - name: Setup Bun ${{ matrix.bun }}
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ matrix.bun }}
 
       - name: Download build artifacts
         uses: actions/download-artifact@v5
@@ -87,17 +81,14 @@ jobs:
           name: build-files
           path: .
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run tests
-        run: bun test:all
+      - name: Smoke test built package
+        run: node scripts/smoke.mjs
 
   release:
-    needs: test
+    needs: smoke
     runs-on: ubuntu-latest
     if: >
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next') &&
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next') &&
       !contains(github.event.head_commit.message, '--skip-ci')
     steps:
       - name: Checkout code

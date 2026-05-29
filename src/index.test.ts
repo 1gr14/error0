@@ -197,6 +197,30 @@ describe('Error0', () => {
     expect(Error0.causes(error2)).toEqual([error2, error1, anotherError])
   })
 
+  it('causes() does not include a trailing undefined link', () => {
+    const AppError = Error0.use(statusPlugin)
+    const inner = new AppError('inner', { status: 401 })
+    const outer = new AppError('outer', { cause: inner })
+
+    const causes = AppError.causes(outer)
+    // toHaveLength is the decisive check — toEqual ignores trailing undefined items
+    expect(causes).toHaveLength(2)
+    expect(causes).toEqual([outer, inner])
+    expect(causes).not.toContain(undefined)
+
+    // a native Error as the deepest cause: still no trailing undefined
+    const wrapped = new AppError('wrapped', { cause: new Error('native') })
+    expect(AppError.causes(wrapped)).toHaveLength(2)
+  })
+
+  it('causes() keeps non-Error causes but drops nullish input', () => {
+    const AppError = Error0.use(statusPlugin)
+    const withStringCause = new AppError('x', { cause: 'reason' })
+    expect(AppError.causes(withStringCause)).toEqual([withStringCause, 'reason'])
+    expect(AppError.causes(undefined)).toHaveLength(0)
+    expect(AppError.causes(null)).toHaveLength(0)
+  })
+
   it('can limit causes depth via MAX_CAUSES_DEPTH on class', () => {
     const AppError = Error0.use(statusPlugin)
     const base = new AppError('base', { status: 400 })

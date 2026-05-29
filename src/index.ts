@@ -303,7 +303,9 @@ type ErrorPluginResolved = {
   methodEntries: Array<[string, ErrorPluginMethodFn<unknown>]>
 }
 type Error0Mark = string | symbol
-const ERROR0_MARK = Symbol('Error0.mark')
+// Registered (global) symbol so a marked error is recognized by `Error0.is()`
+// even across separate bundles/realms that each ship their own copy of error0.
+const ERROR0_MARK = Symbol.for('@devp0nt/error0.mark')
 const SKIP_ADAPT = Symbol('Error0.skipAdapt')
 const RESERVED_STACK_PROP_ERROR = 'Error0: "stack" is a reserved prop key. Use .stack(...) plugin API instead'
 const RESERVED_MESSAGE_PROP_ERROR = 'Error0: "message" is a reserved prop key. Use .message(...) plugin API instead'
@@ -882,7 +884,10 @@ export class Error0 extends Error {
         break
       }
       seen.add(current)
-      if (!instancesOnly || this.is(current)) {
+      // Skip nullish links: `undefined`/`null` mean "no cause", not a link in the chain.
+      // Without this guard the walk pushes the final error's `undefined` cause as a
+      // trailing element (e.g. [outer, inner, undefined]).
+      if (current != null && (!instancesOnly || this.is(current))) {
         causes.push(current)
       }
       if (!current || typeof current !== 'object') {

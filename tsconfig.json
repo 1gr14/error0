@@ -4,7 +4,7 @@
   "compilerOptions": {
     "rootDir": "./src",
     "types": ["node", "bun-types"],
-    "outDir": "./dist/esm",
+    "outDir": "./dist",
     "module": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022"],

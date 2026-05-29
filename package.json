@@ -1,6 +1,20 @@
 {
   "name": "@devp0nt/error0",
   "version": "0.1.0",
+  "description": "A composable, plugin-based Error class for TypeScript — typed metadata, cause chains, HTTP/status helpers, and full serialize/deserialize round-trips.",
+  "keywords": [
+    "error",
+    "errors",
+    "error-handling",
+    "exception",
+    "typescript",
+    "plugin",
+    "serializable",
+    "cause",
+    "stack",
+    "http-error",
+    "status-code"
+  ],
   "license": "MIT",
   "author": {
     "name": "Sergei Dmitriev",
@@ -14,29 +28,28 @@
   "bugs": {
     "url": "https://github.com/devp0nt/error0/issues"
   },
+  "funding": "https://p0nt.dev/support",
   "type": "module",
-  "types": "./dist/esm/index.d.ts",
-  "main": "./dist/cjs/index.cjs",
-  "module": "./dist/esm/index.js",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "require": "./dist/cjs/index.cjs",
-      "import": "./dist/esm/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugins/*": {
-      "types": "./dist/esm/plugins/*.d.ts",
-      "require": "./dist/cjs/plugins/*.cjs",
-      "import": "./dist/esm/plugins/*.js"
+      "types": "./dist/plugins/*.d.ts",
+      "import": "./dist/plugins/*.js"
     }
   },
   "typesVersions": {
     "*": {
       "": [
-        "./dist/esm/index.d.ts"
+        "./dist/index.d.ts"
       ],
       "plugins/*": [
-        "./dist/esm/plugins/*"
+        "./dist/plugins/*"
       ]
     }
   },
@@ -48,31 +61,12 @@
   "scripts": {
     "dev": "tsc-watch --preserveWatchOutput --project tsconfig.build.json",
     "dev:npm": "tsc-watch --preserveWatchOutput --project tsconfig.build.json --onSuccess 'bun run pack:dist'",
-    "build": "tsup",
-    "build:test:esm": "tsup --outDir dist-test/esm --tsconfig tsconfig.build.test.json --format esm src",
-    "build:test:esm:watch": "bun run build:test:esm --watch",
-    "build:test:cjs": "tsup --outDir dist-test/cjs --tsconfig tsconfig.build.test.json --format cjs src",
-    "build:test:cjs:watch": "bun run build:test:cjs --watch",
-    "build:test": "bun run build:test:esm && bun run build:test:cjs",
-    "build:test:watch": "bun run build:test:esm:watch & bun run build:test:cjs:watch",
-    "build:all": "bun run build && bun run build:test",
+    "build": "tsdown",
     "test": "bun test ./src",
     "test:us": "bun test ./src --update-snapshots",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test ./src --coverage",
-    "test:dist:esm": "bun test ./dist-test/esm",
-    "test:dist:esm:watch": "bun run test:dist:esm --watch",
-    "test:dist:esm:build:watch": "bun build:test:esm:watch --no-clean & bun test:dist:esm:watch",
-    "test:dist:cjs": "bun test ./dist-test/cjs",
-    "test:dist:cjs:watch": "bun run test:dist:cjs --watch",
-    "test:dist:cjs:build:watch": "bun build:test:cjs:watch --no-clean & bun test:dist:cjs:watch",
-    "test:dist": "bun run test:dist:esm && bun run test:dist:cjs",
-    "test:dist:watch": "bun run test:dist:esm:watch & bun run test:dist:cjs:watch",
-    "test:dist:build:watch": "bun build:test:watch & bun test:dist:watch",
-    "test:all": "bun run test && bun run test:dist",
-    "test:all:watch": "bun run test:watch & bun run test:dist:watch",
-    "test:all:build": "bun run build:all && bun run test:all",
-    "test:all:build:watch": "bun run build:all:watch & bun run test:all:watch",
+    "smoke": "node scripts/smoke.mjs",
     "lint": "bun run lint:fix .",
     "lint:base": "eslint --cache --cache-location node_modules/.cache/eslint/.eslintcache",
     "lint:fix": "bun run lint:base --fix",
@@ -86,14 +80,12 @@
     "pack:dry": "npm pack --dry-run",
     "pack:dist": "mkdir -p dist-npm && npm pack --pack-destination dist-npm --silent && cd dist-npm && tar -xzf *.tgz && cp -r package/* . && rm -rf package && rm *.tgz",
     "pack:dist:hard": "rimraf dist-npm && bun run pack:dist",
-    "prepare": "husky",
-    "clean": "rimraf dist && rimraf dist-test && rimraf dist-npm && rimraf node_modules/.cache"
+    "prepare": "husky || true",
+    "clean": "rimraf dist && rimraf dist-npm && rimraf node_modules/.cache"
   },
   "dependencies": {},
   "peerDependencies": {},
   "devDependencies": {
-    "axios": "^1.12.2",
-    "zod": "^4.1.9",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@semantic-release/changelog": "^6.0.3",
@@ -103,28 +95,31 @@
     "@types/bun": "^1.2.22",
     "@types/lodash": "^4.17.20",
     "@types/node": "^20.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260219.1",
+    "axios": "^1.12.2",
     "cross-env": "^10.0.0",
-    "esbuild-fix-imports-plugin": "^1.0.22",
     "eslint": "^9.36.0",
     "eslint-config-love": "^130.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-no-only-tests": "^3.3.0",
-    "@typescript/native-preview": "^7.0.0-dev.20260219.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.1",
     "lodash": "^4.17.21",
     "prettier": "^3.6.2",
+    "prettier-plugin-jsdoc": "^1.8.0",
     "rimraf": "^6.0.1",
     "semantic-release": "^25.0.2",
     "tsc-watch": "^7.1.1",
-    "tsup": "^8.0.0",
-    "typescript": "^5.9.3"
+    "tsdown": "^0.22.0",
+    "typescript": "^5.9.3",
+    "zod": "^4.1.9"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "bun": ">=1.0.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   }
 }

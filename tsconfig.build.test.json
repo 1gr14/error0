@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.build.json",
-  "compilerOptions": {
-    "outDir": "./dist-test/esm",
-    "types": ["node", "bun-types"]
-  },
-  "exclude": ["dist/**/*", "node_modules/**/*"]
-}
