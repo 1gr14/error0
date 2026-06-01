@@ -107,6 +107,24 @@ describe('Error0', () => {
     expect(error.message).toBe('Unknown error')
   })
 
+  it('can be created without any arguments, like a plain Error', () => {
+    const error = new Error0()
+    expect(error).toBeInstanceOf(Error0)
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toBe('Unknown error')
+
+    const AppError = Error0.use('prop', 'status', {
+      init: (input: number) => input,
+      resolve: ({ flow }) => flow.find(Boolean),
+      serialize: ({ resolved }) => resolved,
+      deserialize: ({ value }) => (typeof value === 'number' ? value : undefined),
+    })
+    const appError = new AppError()
+    expect(appError).toBeInstanceOf(AppError)
+    expect(appError.message).toBe('Unknown error')
+    expect(appError.status).toBeUndefined()
+  })
+
   it('class helpers prop/method/adapt mirror use API', () => {
     const AppError = Error0.use('prop', 'status', {
       init: (value: number) => value,

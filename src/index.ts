@@ -309,6 +309,9 @@ const ERROR0_MARK = Symbol.for('@devp0nt/error0.mark')
 const SKIP_ADAPT = Symbol('Error0.skipAdapt')
 const RESERVED_STACK_PROP_ERROR = 'Error0: "stack" is a reserved prop key. Use .stack(...) plugin API instead'
 const RESERVED_MESSAGE_PROP_ERROR = 'Error0: "message" is a reserved prop key. Use .message(...) plugin API instead'
+// Fallback message used when an Error0 is created without one (e.g. `new Error0()`), mirroring
+// the fallback used when adapting a foreign error that carries no usable message.
+const DEFAULT_ERROR_MESSAGE = 'Unknown error'
 
 const fromPropOptionsDefinition = (
   options: ErrorPluginPropOptionsDefinition<any, any, any, any>,
@@ -553,7 +556,7 @@ type ErrorOwnStore = Record<string, unknown>
 export type ClassError0<TPluginsMap extends ErrorPluginsMap = EmptyPluginsMap> = {
   MAX_CAUSES_DEPTH: number
   new (message: string, input?: ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
-  new (input: { message?: string } & ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
+  new (input?: { message?: string } & ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
   readonly __pluginsMap?: TPluginsMap
   from: <TThis extends ClassError0<any>>(this: TThis, error: unknown) => InstanceType<TThis>
   is: <TThis extends ClassError0<any>>(this: TThis, error: unknown) => error is InstanceType<TThis>
@@ -708,17 +711,19 @@ export class Error0 extends Error {
   }
 
   constructor(message: string, input?: ErrorInput<EmptyPluginsMap>)
-  constructor(input: { message?: string } & ErrorInput<EmptyPluginsMap>)
+  constructor(input?: { message?: string } & ErrorInput<EmptyPluginsMap>)
   constructor(
     ...args:
       | [message: string, input?: ErrorInput<EmptyPluginsMap>]
-      | [{ message?: string } & ErrorInput<EmptyPluginsMap>]
+      | [input?: { message?: string } & ErrorInput<EmptyPluginsMap>]
   ) {
     const [first, second] = args
-    const input = typeof first === 'string' ? { message: first, ...(second ?? {}) } : first
+    // `new Error0()` is valid, just like `new Error()` — fall back to an empty input object so
+    // the message defaults to DEFAULT_ERROR_MESSAGE and `SKIP_ADAPT in input` stays safe.
+    const input = typeof first === 'string' ? { message: first, ...(second ?? {}) } : (first ?? {})
     const shouldAdapt = !(SKIP_ADAPT in input)
 
-    super(input.message || 'Unknown error', { cause: input.cause })
+    super(input.message || DEFAULT_ERROR_MESSAGE, { cause: input.cause })
     this.name = 'Error0'
 
     Object.defineProperty(this, 'resolveByKeyCache', {
@@ -1066,7 +1071,7 @@ export class Error0 extends Error {
         ? error
         : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
           ? error.message
-          : undefined) || 'Unknown error'
+          : undefined) || DEFAULT_ERROR_MESSAGE
     )
   }
 
