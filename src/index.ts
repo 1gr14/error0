@@ -555,7 +555,7 @@ type ErrorOwnStore = Record<string, unknown>
 
 export type ClassError0<TPluginsMap extends ErrorPluginsMap = EmptyPluginsMap> = {
   MAX_CAUSES_DEPTH: number
-  new (message: string, input?: ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
+  new (message?: string, input?: ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
   new (input?: { message?: string } & ErrorInput<TPluginsMap>): InstanceError0<TPluginsMap>
   readonly __pluginsMap?: TPluginsMap
   from: <TThis extends ClassError0<any>>(this: TThis, error: unknown) => InstanceType<TThis>
@@ -710,11 +710,11 @@ export class Error0 extends Error {
     return indexed
   }
 
-  constructor(message: string, input?: ErrorInput<EmptyPluginsMap>)
+  constructor(message?: string, input?: ErrorInput<EmptyPluginsMap>)
   constructor(input?: { message?: string } & ErrorInput<EmptyPluginsMap>)
   constructor(
     ...args:
-      | [message: string, input?: ErrorInput<EmptyPluginsMap>]
+      | [message?: string, input?: ErrorInput<EmptyPluginsMap>]
       | [input?: { message?: string } & ErrorInput<EmptyPluginsMap>]
   ) {
     const [first, second] = args

@@ -123,6 +123,15 @@ describe('Error0', () => {
     expect(appError).toBeInstanceOf(AppError)
     expect(appError.message).toBe('Unknown error')
     expect(appError.status).toBeUndefined()
+
+    // Type-level: an Error0 class must stay assignable to a plain-Error-like constructor whose
+    // `message` is optional. This is what lets Point0 (and anything Error-shaped) accept an Error0
+    // class as its error class. The runtime checks above are not enough — without this assertion the
+    // required-`message` overload silently broke assignability while `new Error0()` kept working.
+    type ErrorLikeClass = new (message?: string, options?: { cause?: unknown }) => Error
+    expectTypeOf<typeof Error0>().toExtend<ErrorLikeClass>()
+    expectTypeOf<typeof AppError>().toExtend<ErrorLikeClass>()
+    expectTypeOf<ClassError0>().toExtend<ErrorLikeClass>()
   })
 
   it('class helpers prop/method/adapt mirror use API', () => {
