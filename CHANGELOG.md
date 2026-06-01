@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/devp0nt/error0/compare/v1.0.5...v1.0.6) (2026-06-01)
+
+
+### Bug Fixes
+
+* make Error0 message optional in type signatures, like a plain Error ([c61e497](https://github.com/devp0nt/error0/commit/c61e497c871574a38d970fcdeeb8004dcd463173))
+
 ## [1.0.5](https://github.com/devp0nt/error0/compare/v1.0.4...v1.0.5) (2026-06-01)
 
 
