@@ -15,6 +15,6 @@ export const codePlugin = <TCode extends string>({
       }
       return resolved
     },
-    deserialize: ({ value, record }) => (isCode(value) ? value : undefined),
+    deserialize: ({ value }) => (isCode(value) ? value : undefined),
   })
 }

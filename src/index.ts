@@ -830,7 +830,7 @@ export class Error0 extends Error {
 
   // private readonly [_resolveByKeyCacheSymbol] = new Map<string, unknown>()
   private _resolveByKey(key: string, plugin: ErrorPluginResolved): unknown {
-    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const error = this
     if (this.resolveByKeyCache.has(key)) {
       return this.resolveByKeyCache.get(key)
@@ -852,7 +852,6 @@ export class Error0 extends Error {
         }
         return resolver(options as ErrorPluginPropOptionsResolveOptions<any, any>)
       } catch {
-        // eslint-disable-next-line no-console
         console.error(`Error0: failed to resolve property ${key}`, error)
         return undefined
       }
@@ -1036,7 +1035,6 @@ export class Error0 extends Error {
         const value = prop.deserialize({ value: errorRecord[key], record: errorRecord })
         ;(recreated as unknown as Record<string, unknown>)[key] = value
       } catch {
-        // eslint-disable-next-line no-console
         console.error(`Error0: failed to deserialize property ${key}`, errorRecord)
       }
     }
@@ -1053,7 +1051,6 @@ export class Error0 extends Error {
           fromSerialized: (serializedCause) => this._fromSerialized(serializedCause),
         })
       } catch {
-        // eslint-disable-next-line no-console
         console.error('Error0: failed to deserialize cause', errorRecord)
       }
     }
@@ -1275,7 +1272,7 @@ export class Error0 extends Error {
   }
 
   serialize(isPublic = true): Record<string, unknown> {
-    // eslint-disable-next-line consistent-this, @typescript-eslint/no-this-alias
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const error0 = this
     const ctor = error0.constructor as typeof Error0
     const plugin = ctor._getResolvedPlugin()
@@ -1286,7 +1283,6 @@ export class Error0 extends Error {
         serializedMessage = messagePlugin.serialize({ value: error0.message, error: error0, isPublic })
       }
     } catch {
-      // eslint-disable-next-line no-console
       console.error('Error0: failed to serialize message', error0)
       serializedMessage = error0.message
     }
@@ -1316,7 +1312,6 @@ export class Error0 extends Error {
           json[key] = jsonValue
         }
       } catch {
-        // eslint-disable-next-line no-console
         console.error(`Error0: failed to serialize property ${key}`, error0)
       }
     }
@@ -1332,7 +1327,6 @@ export class Error0 extends Error {
         json.stack = serializedStack
       }
     } catch {
-      // eslint-disable-next-line no-console
       console.error('Error0: failed to serialize stack', error0)
     }
     const causePlugin = plugin.cause
@@ -1349,7 +1343,6 @@ export class Error0 extends Error {
           json.cause = serializedCause
         }
       } catch {
-        // eslint-disable-next-line no-console
         console.error('Error0: failed to serialize cause', error0)
       }
     }

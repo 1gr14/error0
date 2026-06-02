@@ -19,10 +19,10 @@ jobs:
       !contains(github.event.head_commit.message, '--skip-ci')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -44,13 +44,21 @@ jobs:
         run: bun run lint
 
       - name: Source tests
-        run: bun run test
+        run: bun test ./src --coverage --coverage-reporter=text --coverage-reporter=lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          files: ./coverage/lcov.info
+          slug: devp0nt/error0
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false # coverage is informational for now — never fail CI on it
 
       - name: Build
         run: bun run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-files
           path: |
@@ -71,12 +79,12 @@ jobs:
 
     steps:
       - name: Setup Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: build-files
           path: .
@@ -92,12 +100,12 @@ jobs:
       !contains(github.event.head_commit.message, '--skip-ci')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # semantic-release requires full history
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
@@ -109,7 +117,7 @@ jobs:
           bun-version: latest
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: build-files
           path: .

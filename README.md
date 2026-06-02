@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/devp0nt/error0/actions/workflows/ci.yml/badge.svg)](https://github.com/devp0nt/error0/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@devp0nt/error0.svg)](https://www.npmjs.com/package/@devp0nt/error0)
+[![coverage](https://codecov.io/gh/devp0nt/error0/branch/main/graph/badge.svg)](https://codecov.io/gh/devp0nt/error0)
+[![gzip](https://deno.bundlejs.com/badge?q=@devp0nt/error0)](https://bundlejs.com/?q=@devp0nt/error0)
 [![license](https://img.shields.io/npm/l/@devp0nt/error0.svg)](./LICENSE)
 
 <!-- docs:start -->

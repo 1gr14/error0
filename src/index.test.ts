@@ -137,7 +137,7 @@ describe('Error0', () => {
   it('class helpers prop/method/adapt mirror use API', () => {
     const AppError = Error0.use('prop', 'status', {
       init: (value: number) => value,
-      resolve: ({ own, flow }) => {
+      resolve: ({ own }) => {
         return typeof own === 'number' ? own : undefined
       },
       serialize: ({ resolved }) => resolved,
@@ -635,7 +635,7 @@ describe('Error0', () => {
     expectTypeOf<typeof error.computed>().toEqualTypeOf<number | undefined>()
 
     // @ts-expect-error - computed input is disallowed when init has no input arg
-    // eslint-disable-next-line no-new
+
     new AppError('test', { computed: 123 })
   })
 
@@ -651,7 +651,7 @@ describe('Error0', () => {
     expectTypeOf<typeof error.statusCode>().toEqualTypeOf<number | undefined>()
 
     // @ts-expect-error - statusCode input is disallowed when init is omitted
-    // eslint-disable-next-line no-new
+
     new AppError('test', { statusCode: 123 })
   })
 
@@ -672,7 +672,7 @@ describe('Error0', () => {
     Error0.plugin().prop('x', {
       init: (input: number) => input,
       // @ts-expect-error - resolve type extends init type
-      resolve: ({ flow }) => 'string',
+      resolve: () => 'string',
       serialize: ({ resolved }) => resolved,
       deserialize: ({ value }) => (typeof value === 'number' ? value : undefined),
     })
@@ -795,7 +795,7 @@ describe('Error0', () => {
     Error0.plugin().prop('x', {
       init: (input: number) => input,
       // @ts-expect-error - resolve type extends init type
-      resolve: ({ flow }) => 'string',
+      resolve: () => 'string',
       serialize: ({ resolved }) => resolved,
       deserialize: ({ value }) => (typeof value === 'number' ? value : undefined),
     })

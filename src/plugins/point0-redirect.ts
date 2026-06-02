@@ -74,7 +74,6 @@ class RedirectTask<TAdapterNavigateOptions extends AdapterNavigateOptions = Adap
         options: parsed.options as TAdapterNavigateOptions & SpecialNavigateOptions<TAdapterNavigateOptions>,
       })
     } catch (error) {
-      // eslint-disable-next-line preserve-caught-error
       throw new Error('Failed to parse redirect task: ' + (error instanceof Error ? error.message : String(error)))
     }
   }
@@ -92,7 +91,7 @@ export const redirectPlugin = <TAdapterNavigateOptions extends AdapterNavigateOp
       deserialize: ({ value }) => {
         try {
           return RedirectTask.from(value as never)
-        } catch (error) {
+        } catch {
           return undefined
         }
       },
