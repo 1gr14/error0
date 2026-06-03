@@ -51,7 +51,7 @@ jobs:
         with:
           files: ./coverage/lcov.info
           slug: devp0nt/error0
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true # tokenless: GitHub OIDC + the Codecov GitHub App (no stored token)
           fail_ci_if_error: false # coverage is informational for now — never fail CI on it
 
       - name: Build
