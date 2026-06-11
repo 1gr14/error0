@@ -23,6 +23,7 @@ import { statusPlugin } from '@1gr14/error0/plugins/status'
 import { codePlugin } from '@1gr14/error0/plugins/code'
 import { metaPlugin } from '@1gr14/error0/plugins/meta'
 import { causePlugin } from '@1gr14/error0/plugins/cause'
+import { stackPlugin } from '@1gr14/error0/plugins/stack'
 import { responsePlugin } from '@1gr14/error0/plugins/response'
 import { redirectPlugin } from '@1gr14/error0/plugins/point0-redirect'
 import { flatOriginalPlugin } from '@1gr14/error0/plugins/flat-original'
@@ -36,6 +37,7 @@ export const AppError = Error0.mark('AppError')
   )
   .use(metaPlugin()) // private — lands in serializePrivate() only
   .use(causePlugin()) // the cause chain (Zod, Axios, ...) survives serializePrivate()
+  .use(stackPlugin()) // the stack policy, explicit: private by default
   .use(responsePlugin())
   .use(redirectPlugin())
   .use(flatOriginalPlugin())
@@ -165,8 +167,8 @@ left out — it's then `undefined`. That convention is the trick behind
 
 `message` and `stack` are reserved — adding them as props throws. To change how
 they serialize, use their own hooks: `.use('message', { serialize })` and
-`.use('stack', { serialize })` (the bundled `messageMergePlugin` and
-`stackMergePlugin` are built on these).
+`.use('stack', { serialize })` (the bundled `stackPlugin`, `messageMergePlugin`,
+and `stackMergePlugin` are built on these).
 
 ## Fields flow through cause chains
 
@@ -303,21 +305,22 @@ const err = new AppError('User not found', {
 err.hasTag('user-error') // true  ← method from tagsPlugin
 ```
 
-| Plugin                                               | Adds                                | What it does                                                 |
-| ---------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
-| [`statusPlugin`](src/plugins/status.ts)              | `status: number`                    | HTTP-style status, with optional enum and strict mode.       |
-| [`codePlugin`](src/plugins/code.ts)                  | `code: string`                      | Machine-readable code, with an optional whitelist.           |
-| [`codeStatusPlugin`](src/plugins/code-status.ts)     | `code: string`, `status: number`    | Both in one: a `{ CODE: status }` map auto-fills the status. |
-| [`tagsPlugin`](src/plugins/tags.ts)                  | `tags: string[]`, `hasTag()`        | Dedup'd tags merged across the cause chain.                  |
-| [`metaPlugin`](src/plugins/meta.ts)                  | `meta: Record<string, unknown>`     | JSON-safe metadata, merged across causes (nearest wins).     |
-| [`expectedPlugin`](src/plugins/expected.ts)          | `expected: boolean`, `isExpected()` | Flag errors that aren't bugs, so you don't log them as such. |
-| [`causePlugin`](src/plugins/cause.ts)                | cause serialization                 | Round-trip non-`Error0` causes (Zod, Axios, your classes).   |
-| [`headersPlugin`](src/plugins/headers.ts)            | `headers: Record<string, string>`   | Merge HTTP headers from the cause chain (not serialized).    |
-| [`responsePlugin`](src/plugins/response.ts)          | `response: Response`                | Attach a `Response` object (not serialized).                 |
-| [`messageMergePlugin`](src/plugins/message-merge.ts) | merged message on serialize         | Join the message chain when serializing.                     |
-| [`stackMergePlugin`](src/plugins/stack-merge.ts)     | merged stack on serialize           | Join the stack chain when serializing.                       |
-| [`flatOriginalPlugin`](src/plugins/flat-original.ts) | adapt hook                          | Unwrap a native `Error` cause — adopt its message and stack. |
-| [`redirectPlugin`](src/plugins/point0-redirect.ts)   | `redirect`                          | Attach a navigation redirect (for `point0`).                 |
+| Plugin                                               | Adds                                | What it does                                                        |
+| ---------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| [`statusPlugin`](src/plugins/status.ts)              | `status: number`                    | HTTP-style status, with optional enum and strict mode.              |
+| [`codePlugin`](src/plugins/code.ts)                  | `code: string`                      | Machine-readable code, with an optional whitelist.                  |
+| [`codeStatusPlugin`](src/plugins/code-status.ts)     | `code: string`, `status: number`    | Both in one: a `{ CODE: status }` map auto-fills the status.        |
+| [`tagsPlugin`](src/plugins/tags.ts)                  | `tags: string[]`, `hasTag()`        | Dedup'd tags merged across the cause chain.                         |
+| [`metaPlugin`](src/plugins/meta.ts)                  | `meta: Record<string, unknown>`     | JSON-safe metadata, merged across causes (nearest wins).            |
+| [`expectedPlugin`](src/plugins/expected.ts)          | `expected: boolean`, `isExpected()` | Flag errors that aren't bugs, so you don't log them as such.        |
+| [`causePlugin`](src/plugins/cause.ts)                | cause serialization                 | Round-trip non-`Error0` causes (Zod, Axios, your classes).          |
+| [`headersPlugin`](src/plugins/headers.ts)            | `headers: Record<string, string>`   | Merge HTTP headers from the cause chain (not serialized).           |
+| [`responsePlugin`](src/plugins/response.ts)          | `response: Response`                | Attach a `Response` object (not serialized).                        |
+| [`stackPlugin`](src/plugins/stack.ts)                | stack policy on serialize           | The default stack gate as a plugin — `transport` picks who sees it. |
+| [`messageMergePlugin`](src/plugins/message-merge.ts) | merged message on serialize         | Join the message chain when serializing.                            |
+| [`stackMergePlugin`](src/plugins/stack-merge.ts)     | merged stack on serialize           | Join the stack chain when serializing.                              |
+| [`flatOriginalPlugin`](src/plugins/flat-original.ts) | adapt hook                          | Unwrap a native `Error` cause — adopt its message and stack.        |
+| [`redirectPlugin`](src/plugins/point0-redirect.ts)   | `redirect`                          | Attach a navigation redirect (for `point0`).                        |
 
 ## Send an error across the wire
 
