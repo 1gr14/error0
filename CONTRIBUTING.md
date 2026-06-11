@@ -40,7 +40,8 @@ Run `bun run test`, `bun run types`, and `bun run lint` before you push.
   might get rejected.
 - One PR, one topic. No unrelated changes.
 - Match the existing code style.
-- Add or update tests for your change.
+- Add or update tests for your change. When you change public types, add type
+  tests with `expectTypeOf` from `bun:test` (checked by `tsc`).
 - Work on a branch, not `main`.
 - Keep "Allow edits from maintainers" checked.
 
