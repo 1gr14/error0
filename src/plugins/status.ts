@@ -1,10 +1,10 @@
 import { Error0 } from '../index.js'
 
 export const statusPlugin = <TStatuses extends Record<string, number> = Record<never, number>>({
-  isPublic = false,
+  transport = 'private',
   statuses,
   strict = false,
-}: { isPublic?: boolean; statuses?: TStatuses; strict?: boolean } = {}) => {
+}: { transport?: 'public' | 'private' | 'none'; statuses?: TStatuses; strict?: boolean } = {}) => {
   const statusValues = statuses ? Object.values(statuses) : undefined
   const isStatusValue = (value: unknown): value is number =>
     typeof value === 'number' && (!statusValues || !strict || statusValues.includes(value))
@@ -24,8 +24,8 @@ export const statusPlugin = <TStatuses extends Record<string, number> = Record<n
   return Error0.plugin().prop('status', {
     init: (status: number | Extract<keyof TStatuses, string>) => convertStatusValue(status),
     resolve: ({ flow }) => flow.find(Boolean),
-    serialize: ({ resolved, isPublic: _isPublic }) => {
-      if (!isPublic && _isPublic) {
+    serialize: ({ resolved, isPublic }) => {
+      if (transport === 'none' || (transport === 'private' && isPublic)) {
         return undefined
       }
       return resolved

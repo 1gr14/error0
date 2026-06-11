@@ -23,7 +23,7 @@ describe('causePlugin', () => {
   it('serializes and deserializes nested Error0 causes', () => {
     const AppError = Error0.use(statusPlugin)
       .use(codePlugin)
-      .use(causePlugin({ isPublic: true }))
+      .use(causePlugin({ transport: 'public' }))
     const deepCauseError = new AppError('deep cause')
     const causeError = new AppError('cause', { status: 409, code: 'NOT_FOUND', cause: deepCauseError })
     const error = new AppError('root', { status: 500, cause: causeError })

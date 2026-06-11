@@ -568,6 +568,8 @@ export type ClassError0<TPluginsMap extends ErrorPluginsMap = EmptyPluginsMap> =
   }
   resolve: (error: unknown) => ErrorResolvedProps<TPluginsMap>
   serialize: (error: unknown, isPublic?: boolean) => Record<string, unknown>
+  serializePublic: (error: unknown) => Record<string, unknown>
+  serializePrivate: (error: unknown) => Record<string, unknown>
   assign: <TThis extends ClassError0<any>>(
     this: TThis,
     error: unknown,
@@ -724,7 +726,11 @@ export class Error0 extends Error {
     const shouldAdapt = !(SKIP_ADAPT in input)
 
     super(input.message || DEFAULT_ERROR_MESSAGE, { cause: input.cause })
-    this.name = 'Error0'
+    const ctor = this.constructor as typeof Error0
+    const mark = ctor._getMark()
+    // A string mark doubles as the error's name, so logs and toString() show the app-level
+    // identity ('AppError: …') instead of the generic 'Error0'.
+    this.name = typeof mark === 'string' ? mark : 'Error0'
 
     Object.defineProperty(this, 'resolveByKeyCache', {
       value: new Map<string, unknown>(),
@@ -732,8 +738,6 @@ export class Error0 extends Error {
       enumerable: false,
       configurable: false,
     })
-    const ctor = this.constructor as typeof Error0
-    const mark = ctor._getMark()
     if (mark !== undefined) {
       Object.defineProperty(this, ERROR0_MARK, {
         value: mark,
@@ -1271,6 +1275,16 @@ export class Error0 extends Error {
     return this.from(error).serialize(isPublic)
   }
 
+  // The two audiences, named: public — what an untrusted client may see; private — the full
+  // view for trusted consumers (logs, dev tooling).
+  static serializePublic(error: unknown): Record<string, unknown> {
+    return this.from(error).serialize(true)
+  }
+
+  static serializePrivate(error: unknown): Record<string, unknown> {
+    return this.from(error).serialize(false)
+  }
+
   serialize(isPublic = true): Record<string, unknown> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const error0 = this
@@ -1287,6 +1301,8 @@ export class Error0 extends Error {
       serializedMessage = error0.message
     }
     const json: Record<string, unknown> = {}
+    // Identity always travels — name is never publicity-gated; deserialization ignores it.
+    json.name = error0.name
     if (serializedMessage !== undefined) {
       json.message = serializedMessage
     }
@@ -1347,5 +1363,13 @@ export class Error0 extends Error {
       }
     }
     return json
+  }
+
+  serializePublic(): Record<string, unknown> {
+    return this.serialize(true)
+  }
+
+  serializePrivate(): Record<string, unknown> {
+    return this.serialize(false)
   }
 }

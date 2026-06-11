@@ -75,8 +75,8 @@ describe('codeStatusPlugin', () => {
     expect(json.status).toBeUndefined()
   })
 
-  it('keeps both props in public serialization when isPublic is true', () => {
-    const AppError = Error0.use(codeStatusPlugin({ codes, isPublic: true }))
+  it("keeps both props in public serialization when transport is 'public'", () => {
+    const AppError = Error0.use(codeStatusPlugin({ codes, transport: 'public' }))
     const error = new AppError('test', { code: 'BAD_REQUEST' })
     const json = AppError.serialize(error)
     expect(json.code).toBe('BAD_REQUEST')

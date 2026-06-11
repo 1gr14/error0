@@ -28,15 +28,15 @@ const isExpected = ({
 }
 
 export const expectedPlugin = <TError extends Error0>({
-  isPublic = false,
+  transport = 'private',
   override,
-}: { isPublic?: boolean; override?: (error: TError) => boolean | undefined } = {}) =>
+}: { transport?: 'public' | 'private' | 'none'; override?: (error: TError) => boolean | undefined } = {}) =>
   Error0.plugin()
     .prop('expected', {
       init: (input: boolean) => input,
       resolve: ({ flow, error }) => isExpected({ flow, error, override }),
-      serialize: ({ resolved, isPublic: _isPublic }) => {
-        if (isPublic && _isPublic) {
+      serialize: ({ resolved, isPublic }) => {
+        if (transport === 'none' || (transport === 'private' && isPublic)) {
           return undefined
         }
         return resolved

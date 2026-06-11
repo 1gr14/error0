@@ -1,10 +1,10 @@
 import { Error0 } from '../index.js'
 
 export const tagsPlugin = <TTag extends string>({
-  isPublic = false,
+  transport = 'private',
   tags,
   strict = true,
-}: { isPublic?: boolean; tags?: TTag[] | readonly TTag[]; strict?: boolean } = {}) => {
+}: { transport?: 'public' | 'private' | 'none'; tags?: TTag[] | readonly TTag[]; strict?: boolean } = {}) => {
   // function hasTag(error: Error0, tag: TTag): boolean
   // function hasTag(error: Error0, tag: TTag[], policy: 'every' | 'some'): boolean
   // function hasTag(error: Error0, tag: TTag | TTag[], policy?: 'every' | 'some'): boolean {
@@ -34,8 +34,8 @@ export const tagsPlugin = <TTag extends string>({
         }
         return merged.length > 0 ? Array.from(new Set(merged)) : undefined
       },
-      serialize: ({ resolved, isPublic: _isPublic }) => {
-        if (!isPublic && _isPublic) {
+      serialize: ({ resolved, isPublic }) => {
+        if (transport === 'none' || (transport === 'private' && isPublic)) {
           return undefined
         }
         return resolved

@@ -2,8 +2,8 @@ import { Error0 } from '../index.js'
 
 export const codeStatusPlugin = <TCodes extends Record<string, number | true> = Record<string, number | true>>({
   codes,
-  isPublic = false,
-}: { codes?: TCodes; isPublic?: boolean } = {}) => {
+  transport = 'private',
+}: { codes?: TCodes; transport?: 'public' | 'private' | 'none' } = {}) => {
   const isCode = (value: unknown): value is Extract<keyof TCodes, string> =>
     typeof value === 'string' && (!codes || value in codes)
   const statusByCode = (code: string | undefined): number | undefined => {
@@ -15,8 +15,8 @@ export const codeStatusPlugin = <TCodes extends Record<string, number | true> = 
     .prop('code', {
       init: (code: Extract<keyof TCodes, string>) => code,
       resolve: ({ flow }) => flow.find(Boolean),
-      serialize: ({ resolved, isPublic: _isPublic }) => {
-        if (!isPublic && _isPublic) {
+      serialize: ({ resolved, isPublic }) => {
+        if (transport === 'none' || (transport === 'private' && isPublic)) {
           return undefined
         }
         return resolved
@@ -26,8 +26,8 @@ export const codeStatusPlugin = <TCodes extends Record<string, number | true> = 
     .prop('status', {
       init: (status: number) => status,
       resolve: ({ flow }) => flow.find(Boolean),
-      serialize: ({ resolved, isPublic: _isPublic }) => {
-        if (!isPublic && _isPublic) {
+      serialize: ({ resolved, isPublic }) => {
+        if (transport === 'none' || (transport === 'private' && isPublic)) {
           return undefined
         }
         return resolved

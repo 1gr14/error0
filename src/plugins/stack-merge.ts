@@ -1,12 +1,12 @@
 import { Error0 } from '../index.js'
 
 export const stackMergePlugin = ({
-  isPublic = false,
+  transport = 'private',
   delimiter = '\n',
-}: { isPublic?: boolean; delimiter?: string } = {}) =>
+}: { transport?: 'public' | 'private' | 'none'; delimiter?: string } = {}) =>
   Error0.plugin().stack({
-    serialize: ({ error, isPublic: _isPublic }) => {
-      if (!isPublic && _isPublic) {
+    serialize: ({ error, isPublic }) => {
+      if (transport === 'none' || (transport === 'private' && isPublic)) {
         return undefined
       }
       return error

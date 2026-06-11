@@ -22,6 +22,7 @@ import { Error0 } from '@1gr14/error0'
 import { statusPlugin } from '@1gr14/error0/plugins/status'
 import { codePlugin } from '@1gr14/error0/plugins/code'
 import { metaPlugin } from '@1gr14/error0/plugins/meta'
+import { causePlugin } from '@1gr14/error0/plugins/cause'
 import { responsePlugin } from '@1gr14/error0/plugins/response'
 import { redirectPlugin } from '@1gr14/error0/plugins/point0-redirect'
 import { flatOriginalPlugin } from '@1gr14/error0/plugins/flat-original'
@@ -29,18 +30,17 @@ import { expectedPlugin } from '@1gr14/error0/plugins/expected'
 
 // One error class for your whole app — compose built-in plugins and your own.
 export const AppError = Error0.mark('AppError')
-  .use(statusPlugin({ isPublic: true }))
-  .use(codePlugin({ codes: ['UNAUTHORIZED', 'FORBIDDEN'], isPublic: true }))
-  .use(metaPlugin({ isPublic: process.env.NODE_ENV !== 'production' }))
+  .use(statusPlugin({ transport: 'public' }))
+  .use(
+    codePlugin({ codes: ['UNAUTHORIZED', 'FORBIDDEN'], transport: 'public' }),
+  )
+  .use(metaPlugin()) // private — lands in serializePrivate() only
+  .use(causePlugin()) // the cause chain (Zod, Axios, ...) survives serializePrivate()
   .use(responsePlugin())
   .use(redirectPlugin())
   .use(flatOriginalPlugin())
-  .use(expectedPlugin({ isPublic: true }))
+  .use(expectedPlugin())
   .use(betterAuthErrorPlugin) // ← your own plugin, composed like the rest
-  .use('stack', {
-    serialize: ({ value }) =>
-      process.env.NODE_ENV === 'production' ? undefined : value,
-  })
 
 // build errors with typed fields
 const inner = new AppError('Token expired', {
@@ -54,7 +54,7 @@ outer.status // 401  ← flowed up from the inner cause
 outer.flow('status') // [undefined, 401]  — the value at each level of the chain
 
 // coerce anything at a boundary, then serialize a client-safe payload
-const json = AppError.from(outer).serialize() // public fields only; stack dropped in prod
+const json = AppError.serializePublic(outer) // public fields only; no stack, no meta
 
 // ...and rebuild a real AppError on the other side
 const restored = AppError.from(json)
@@ -120,7 +120,7 @@ const AppError = Error0.use('prop', 'dbError', {
 
 const err = new AppError('Query failed', { dbError: pgError })
 err.dbError // the full driver error, typed — for your logs
-AppError.serialize(err) // { message } — `dbError` never crosses the wire
+AppError.serialize(err) // { name, message } — `dbError` never crosses the wire
 ```
 
 One class to catch, one `is()`, one serialize contract — every concern lives as
@@ -327,7 +327,7 @@ typed error on the other side:
 ```ts
 const err = new AppError('User not found', { status: 404, code: 'NOT_FOUND' })
 
-const json = err.serialize(false) // full object, safe to JSON.stringify
+const json = err.serializePrivate() // full object, safe to JSON.stringify
 const back = AppError.from(json) // a real AppError again
 
 back instanceof AppError // true
@@ -337,20 +337,27 @@ back.code // 'NOT_FOUND'
 
 ### Public vs private
 
-Some fields are for your logs, not your users. Every plugin can mark a field
-private; `serialize()` then hides it, while `serialize(false)` keeps everything:
+Some fields are for your logs, not your users. The two audiences have named
+methods: `serializePublic()` is what an untrusted client may see;
+`serializePrivate()` is the full view for trusted consumers — logs, dev tooling.
+Both are thin sugar over `serialize(isPublic)`:
 
 ```ts
-const AppError = Error0.use(statusPlugin({ isPublic: true })) // visible to clients
-  .use(codePlugin()) // private by default
+const AppError = Error0.use(statusPlugin({ transport: 'public' })) // visible to clients
+  .use(codePlugin()) // transport: 'private' by default
 
 const err = new AppError('Nope', { status: 403, code: 'FORBIDDEN' })
 
-err.serialize() // public:  { message: 'Nope', status: 403 }   ← no code, no stack
-err.serialize(false) // full:    { message, status, code, stack }
+err.serializePublic() // { name, message, status }   ← no code, no stack
+err.serializePrivate() // { name, message, status, code, stack }
 ```
 
-Send `err.serialize()` to the browser, log `err.serialize(false)` on the server.
+Send `err.serializePublic()` to the browser, log `err.serializePrivate()` on the
+server.
+
+Every bundled plugin takes the same `transport` option: `'public'` — the field
+is in both outputs; `'private'` — only in `serializePrivate()`; `'none'` — never
+serialized at all.
 
 There's no magic here — it's the field's own `serialize`. The function gets a
 call-time `isPublic` flag and decides what to return. Return a value and the
@@ -358,15 +365,16 @@ field lands in the JSON; return `undefined` and it's dropped entirely. Here's
 the exact gate every bundled plugin uses:
 
 ```ts
-// inside statusPlugin({ isPublic })  ← `isPublic` is the plugin option
-serialize: ({ resolved, isPublic: callIsPublic }) => {
-  // field is private (isPublic: false) AND this is a public call → hide it
-  if (!isPublic && callIsPublic) return undefined
+// inside statusPlugin({ transport })  ← 'public' | 'private' | 'none', the plugin option
+serialize: ({ resolved, isPublic }) => {
+  // never serialized, or private on a public call → hide it
+  if (transport === 'none' || (transport === 'private' && isPublic))
+    return undefined
   return resolved // otherwise, put the value in the JSON
 }
 ```
 
-So the `isPublic` option is just the default for that gate. Write your own
+So the `transport` option is just the default for that gate. Write your own
 `serialize` and you decide exactly what crosses the wire — mask a value, round
 it, or drop it.
 
@@ -450,28 +458,32 @@ source-mapped stack traces in development.
 
 ### Static
 
-| Call                                 | Result                                           |
-| ------------------------------------ | ------------------------------------------------ |
-| `Error0.use(plugin)`                 | Extend with a plugin builder.                    |
-| `Error0.use('prop', key, options)`   | Add one typed field.                             |
-| `Error0.use('method', key, fn)`      | Add an instance method.                          |
-| `Error0.use('adapt', fn)`            | Run a function on every new error.               |
-| `Error0.plugin()`                    | Start a plugin builder.                          |
-| `Error0.from(unknown)`               | Coerce anything into an `Error0` instance.       |
-| `Error0.is(unknown)`                 | Type guard for this class.                       |
-| `Error0.serialize(error, isPublic?)` | Serialize to a plain object (public by default). |
-| `Error0.round(error, isPublic?)`     | `from(serialize(error))`.                        |
-| `Error0.causes(error)`               | The cause chain as an array.                     |
-| `Error0.flow(error, key)`            | A field's values down the cause chain.           |
-| `Error0.assign(error, props)`        | Set fields on an existing error.                 |
-| `Error0.mark(string \| symbol)`      | Brand the class for cross-bundle `is()` checks.  |
-| `Error0.MAX_CAUSES_DEPTH`            | Cap on cause-chain walks (default `99`).         |
+| Call                                 | Result                                                                                 |
+| ------------------------------------ | -------------------------------------------------------------------------------------- |
+| `Error0.use(plugin)`                 | Extend with a plugin builder.                                                          |
+| `Error0.use('prop', key, options)`   | Add one typed field.                                                                   |
+| `Error0.use('method', key, fn)`      | Add an instance method.                                                                |
+| `Error0.use('adapt', fn)`            | Run a function on every new error.                                                     |
+| `Error0.plugin()`                    | Start a plugin builder.                                                                |
+| `Error0.from(unknown)`               | Coerce anything into an `Error0` instance.                                             |
+| `Error0.is(unknown)`                 | Type guard for this class.                                                             |
+| `Error0.serialize(error, isPublic?)` | Serialize to a plain object (public by default).                                       |
+| `Error0.serializePublic(error)`      | What an untrusted client may see.                                                      |
+| `Error0.serializePrivate(error)`     | The full view — for logs and dev tooling.                                              |
+| `Error0.round(error, isPublic?)`     | `from(serialize(error))`.                                                              |
+| `Error0.causes(error)`               | The cause chain as an array.                                                           |
+| `Error0.flow(error, key)`            | A field's values down the cause chain.                                                 |
+| `Error0.assign(error, props)`        | Set fields on an existing error.                                                       |
+| `Error0.mark(string \| symbol)`      | Brand the class for cross-bundle `is()` checks; a string mark also becomes `err.name`. |
+| `Error0.MAX_CAUSES_DEPTH`            | Cap on cause-chain walks (default `99`).                                               |
 
 ### Instance
 
 | Call                       | Result                                      |
 | -------------------------- | ------------------------------------------- |
 | `err.serialize(isPublic?)` | Serialize this error (public by default).   |
+| `err.serializePublic()`    | What an untrusted client may see.           |
+| `err.serializePrivate()`   | The full view — for logs and dev tooling.   |
 | `err.round(isPublic?)`     | Round-trip this error.                      |
 | `err.assign(props)`        | Set fields, return `this`.                  |
 | `err.flow(key)`            | A field's values down the cause chain.      |
