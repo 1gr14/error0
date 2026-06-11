@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/1gr14/error0/compare/v0.2.0...v0.3.0) (2026-06-11)
+
+
+### Features
+
+* named serialization audiences, transport plugin option, foreign-cause chains ([8e74e98](https://github.com/1gr14/error0/commit/8e74e98d926ef6fee357a3c165ad9d1dbbe75d0d))
+
 # [0.2.0](https://github.com/1gr14/error0/compare/v0.1.0...v0.2.0) (2026-06-10)
 
 
