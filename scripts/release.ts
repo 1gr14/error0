@@ -78,7 +78,8 @@ if (!isPre && existsSync(changelogPath)) {
 }
 
 const branch = isPre ? 'next' : 'main'
-const tag = isPre ? '' : ` && git tag v${next}`
+// Annotated tag (-a) on purpose: `git push --follow-tags` only pushes annotated tags, never lightweight ones.
+const tag = isPre ? '' : ` && git tag -a v${next} -m v${next}`
 console.info(
   `\nReady (${next}, channel: ${branch}). Review the diff, then:\n` +
     `  git add -A && git commit -m "chore(release): ${next}"${tag}\n` +
