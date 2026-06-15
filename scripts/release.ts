@@ -4,9 +4,9 @@
  * Then you review, commit, tag, and push — CI publishes (scripts/publish.ts). Nothing is derived from commit messages;
  * the version is always your explicit choice.
  *
- * bun run release patch 0.4.1 → 0.4.2 bun run release minor 0.4.1 → 0.5.0 bun run release prerelease 0.4.1 →
- * 0.4.1-next.0 (re-run → -next.1, -next.2 …) bun run release stable 0.5.0-next.3 → 0.5.0 (strip the prerelease suffix)
- * bun run release 0.6.0 explicit version (also accepts 0.6.0-next.0)
+ * bun run release patch 0.1.0 → 0.1.1 bun run release minor 0.1.0 → 0.2.0 bun run release prerelease 0.1.0 →
+ * 0.1.0-next.0 (re-run → -next.1, -next.2 …) bun run release stable 0.2.0-next.3 → 0.2.0 (strip the prerelease suffix)
+ * bun run release 0.3.0 explicit version (also accepts 0.3.0-next.0)
  *
  * Prereleases publish from `next` (dist-tag next); stable from `main` (dist-tag latest) — the branch ↔ version
  * invariant is enforced by scripts/check-channel.ts in CI and on pre-push. patch/minor always stay in 0.x — they can
