@@ -122,7 +122,7 @@ const AppError = Error0.use('prop', 'dbError', {
 
 const err = new AppError('Query failed', { dbError: pgError })
 err.dbError // the full driver error, typed — for your logs
-AppError.serialize(err) // { name, message } — `dbError` never crosses the wire
+AppError.serialize(err) // { message } — `dbError` never crosses the wire
 ```
 
 One class to catch, one `is()`, one serialize contract — every concern lives as
@@ -313,7 +313,7 @@ err.hasTag('user-error') // true  ← method from tagsPlugin
 | [`tagsPlugin`](src/plugins/tags.ts)                  | `tags: string[]`, `hasTag()`        | Dedup'd tags merged across the cause chain.                         |
 | [`metaPlugin`](src/plugins/meta.ts)                  | `meta: Record<string, unknown>`     | JSON-safe metadata, merged across causes (nearest wins).            |
 | [`expectedPlugin`](src/plugins/expected.ts)          | `expected: boolean`, `isExpected()` | Flag errors that aren't bugs, so you don't log them as such.        |
-| [`causePlugin`](src/plugins/cause.ts)                | cause serialization                 | Round-trip non-`Error0` causes (Zod, Axios, your classes).          |
+| [`causePlugin`](src/plugins/cause.ts)                | cause chain on serialize            | Carry the cause chain: Error0s rebuilt, foreign errors kept as `name`/`message`/`stack`. |
 | [`headersPlugin`](src/plugins/headers.ts)            | `headers: Record<string, string>`   | Merge HTTP headers from the cause chain (not serialized).           |
 | [`responsePlugin`](src/plugins/response.ts)          | `response: Response`                | Attach a `Response` object (not serialized).                        |
 | [`stackPlugin`](src/plugins/stack.ts)                | stack policy on serialize           | The default stack gate as a plugin — `transport` picks who sees it. |
@@ -351,8 +351,8 @@ const AppError = Error0.use(statusPlugin({ transport: 'public' })) // visible to
 
 const err = new AppError('Nope', { status: 403, code: 'FORBIDDEN' })
 
-err.serializePublic() // { name, message, status }   ← no code, no stack
-err.serializePrivate() // { name, message, status, code, stack }
+err.serializePublic() // { message, status }   ← no code, no stack
+err.serializePrivate() // { message, status, code, stack }
 ```
 
 Send `err.serializePublic()` to the browser, log `err.serializePrivate()` on the
@@ -385,14 +385,24 @@ it, or drop it.
 ### Causes that aren't Error0 (Zod, Axios, ...)
 
 By default a cause isn't serialized — it can't always survive JSON.
-`causePlugin` fixes that, and lets you round-trip foreign error types through
-`variants`:
+`causePlugin` fixes that: nested `Error0` causes are rebuilt, and any foreign
+error is kept as `{ name, message, stack }` with its own cause chain walked.
 
 ```ts
 import { causePlugin } from '@1gr14/error0/plugins/cause'
 
 const AppError = Error0.use(causePlugin())
 // now `serialize(false)` includes the cause, and `from()` rebuilds it
+```
+
+To round-trip a _known_ foreign type losslessly — not just keep its name and
+message — there's an experimental, separate `causeVariantsPlugin`:
+
+```ts
+import { causeVariantsPlugin } from '@1gr14/error0/plugins/cause-variants'
+
+const AppError = Error0.use(causeVariantsPlugin({ variants: { DbError } }))
+// a DbError cause now survives the round-trip with its own fields intact
 ```
 -->
 

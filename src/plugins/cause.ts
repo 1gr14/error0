@@ -1,17 +1,12 @@
 import { Error0 } from '../index.js'
 
-type Variant = {
-  new (...args: any[]): unknown
-  [Symbol.hasInstance]: (value: any) => boolean
-  isSerialized: (serializedCause: any) => boolean
-  serialize: (error: any) => unknown
-  from: (error: any) => unknown
-}
+type Transport = 'public' | 'private' | 'none'
 
-export const causePlugin = <TVariants extends Record<string, Variant> = Record<never, Variant>>({
-  transport = 'private',
-  variants = undefined,
-}: { transport?: 'public' | 'private' | 'none'; variants?: TVariants } = {}) =>
+// Carry the `.cause` chain across serialize/deserialize: nested Error0s are rebuilt by `from()`,
+// foreign errors are kept structurally as { name, message, stack } and their own chain is walked
+// (cycle + depth guarded). `transport` gates who sees the cause: 'private' (default) keeps it out
+// of serializePublic(), 'public' sends it to everyone, 'none' drops it from every output.
+export const causePlugin = ({ transport = 'private' }: { transport?: Transport } = {}) =>
   Error0.plugin().cause({
     serialize: ({ cause, isPublic, is, serialize }) => {
       if (transport === 'none' || (transport === 'private' && isPublic)) {
@@ -23,13 +18,6 @@ export const causePlugin = <TVariants extends Record<string, Variant> = Record<n
           return undefined
         }
         seen.add(value)
-        if (variants) {
-          for (const variant of Object.values(variants)) {
-            if (value instanceof variant) {
-              return variant.serialize(value)
-            }
-          }
-        }
         if (is(value)) {
           return serialize(value)
         }
@@ -51,13 +39,6 @@ export const causePlugin = <TVariants extends Record<string, Variant> = Record<n
       return serializeChain(cause, 0)
     },
     deserialize: ({ cause, fromSerialized, isSerialized }) => {
-      if (variants) {
-        for (const variant of Object.values(variants)) {
-          if (variant.isSerialized(cause)) {
-            return variant.from(cause)
-          }
-        }
-      }
       if (isSerialized(cause)) {
         return fromSerialized(cause)
       }
