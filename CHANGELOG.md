@@ -1,3 +1,11 @@
+## [0.4.1](https://github.com/1gr14/error0/compare/v0.4.0...v0.4.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* split causePlugin from an experimental causeVariantsPlugin ([7d5a100](https://github.com/1gr14/error0/commit/7d5a100c60dac0ea51474036c724c89c468a7a70))
+* stop serializing an Error0's own name ([48e00a0](https://github.com/1gr14/error0/commit/48e00a0300f1ef8d7ea14636fb56c5eee7bf57ee))
+
 # [0.4.0](https://github.com/1gr14/error0/compare/v0.3.0...v0.4.0) (2026-06-11)
 
 
