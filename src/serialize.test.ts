@@ -44,19 +44,21 @@ describe('name', () => {
     expect(new Error0('boom').name).toBe('Error0')
   })
 
-  it('serialize always carries name, public and private', () => {
+  it('does not serialize its own name, public or private', () => {
     const AppError = buildAppError()
     const error = new AppError('boom')
-    expect(error.serialize(true).name).toBe('AppError')
-    expect(error.serialize(false).name).toBe('AppError')
+    expect(error.serialize(true).name).toBeUndefined()
+    expect(error.serialize(false).name).toBeUndefined()
   })
 
-  it('round-trip survives the name field', () => {
+  it('rebuilds the name from the class on round-trip, not from the payload', () => {
     const AppError = buildAppError()
     const error = new AppError('boom', { code: 'UNAUTHORIZED' })
-    const recreated = AppError.from(error.serialize(false))
+    const json = error.serialize(false)
+    expect(json.name).toBeUndefined() // an Error0's name never crosses the wire
+    const recreated = AppError.from(json)
     expect(recreated).toBeInstanceOf(AppError)
-    expect(recreated.name).toBe('AppError')
+    expect(recreated.name).toBe('AppError') // re-derived from the AppError mark
     expect(recreated.message).toBe('boom')
     expect(recreated.code).toBe('UNAUTHORIZED')
   })
@@ -73,7 +75,7 @@ describe('serializePublic / serializePrivate', () => {
   it('statics accept anything from-able', () => {
     const AppError = buildAppError()
     const json = AppError.serializePrivate(new FakeZodError(zodMessage))
-    expect(json.name).toBe('AppError')
+    expect(json.name).toBeUndefined()
     expect(json.message).toBe(zodMessage)
     expect(typeof json.stack).toBe('string')
   })
@@ -86,7 +88,7 @@ describe('incident 2026-06-10: a foreign cause must survive private serializatio
     const wrapped = AppError.from(zodError)
     const json = wrapped.serializePrivate()
 
-    expect(json.name).toBe('AppError')
+    expect(json.name).toBeUndefined()
     expect(json.message).toBe(zodMessage)
     expect(typeof json.stack).toBe('string')
     expect(json.expected).toBe(false)
@@ -155,9 +157,9 @@ describe('incident 2026-06-10: a foreign cause must survive private serializatio
     const json = error.serializePrivate()
 
     const cause = json.cause as Record<string, unknown>
-    expect(cause.name).toBe('ZodError')
+    expect(cause.name).toBe('ZodError') // foreign link keeps its name — it's the only identity it has
     const nested = cause.cause as Record<string, unknown>
-    expect(nested.name).toBe('AppError')
+    expect(nested.name).toBeUndefined() // the inner AppError is an Error0 — identified by its fields, not a name
     expect(nested.message).toBe('inner')
     expect(nested.code).toBe('FORBIDDEN')
   })

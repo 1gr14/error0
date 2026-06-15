@@ -1301,8 +1301,10 @@ export class Error0 extends Error {
       serializedMessage = error0.message
     }
     const json: Record<string, unknown> = {}
-    // Identity always travels — name is never publicity-gated; deserialization ignores it.
-    json.name = error0.name
+    // An Error0's own name is not serialized: reconstruction is class-directed (`SomeError0.from`
+    // picks the class and re-derives the name from its mark), so a name field would be write-only
+    // noise — and leak the class/mark name even to public output. A foreign cause is the opposite
+    // case: it can't be rebuilt as itself, so the cause plugin keeps its name as the sole identity.
     if (serializedMessage !== undefined) {
       json.message = serializedMessage
     }
