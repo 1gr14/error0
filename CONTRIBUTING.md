@@ -47,8 +47,11 @@ Run `bun run test`, `bun run types`, and `bun run lint` before you push.
 
 ### Commit messages
 
-We use [Conventional Commits](https://www.conventionalcommits.org/). Versions
-and the changelog are generated from them, so the format matters.
+We use [Conventional Commits](https://www.conventionalcommits.org/) (checked by
+commitlint) — they keep history readable. Versions are **not** derived from
+commits: the maintainer picks the next version explicitly with
+`bun run release`, and changelog notes go under `## Unreleased` in
+[CHANGELOG.md](./CHANGELOG.md).
 
 ```
 feat: add tags plugin
