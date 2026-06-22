@@ -31,11 +31,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Type check (tsc)
+      - name: Type check (TypeScript 7)
         run: bun run types
 
-      - name: Type check (tsgo)
-        run: bun run typesgo
+      - name: Type check (TypeScript 6)
+        run: bun run types:6
 
       - name: Lint (eslint)
         run: bun run lint
