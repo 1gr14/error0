@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.4 — 2026-06-22
+
 - Docs: reworked the README — a per-field walkthrough of `init` / `resolve` /
   `serialize` / `deserialize`, a source link on every bundled plugin, an inline
   custom field in the hero example, and clearer `flow` vs `causes()` semantics.
