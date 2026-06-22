@@ -32,17 +32,20 @@ import { codePlugin } from '@1gr14/error0/plugins/code'
 
 // One error class for the whole app — compose the fields you need.
 export const AppError = Error0.mark('AppError')
-  .use(statusPlugin({ transport: 'public' })) // status crosses the wire
-  .use(codePlugin({ codes: ['UNAUTHORIZED', 'FORBIDDEN'] as const })) // private by default
+  .use(statusPlugin({ transport: 'public' })) // a ready-made plugin: typed `status`
+  .use(codePlugin({ codes: ['UNAUTHORIZED', 'FORBIDDEN'] as const })) // and a typed `code`
+  .use('prop', 'requestId', { init: (id: string) => id }) // or any field you want, inline
 
 // Type the instance, the way you would with `class AppError extends Error`.
 export type AppError = InstanceType<typeof AppError>
 
-// Build with typed fields.
+// Build with typed fields — from a plugin or your own.
 const inner = new AppError('Token expired', {
   status: 401,
   code: 'UNAUTHORIZED',
+  requestId: 'req_42',
 })
+inner.requestId // 'req_42'  ← your own inline field, typed string | undefined
 
 // Wrap a cause — fields flow up the chain.
 const outer = new AppError('Request failed', { cause: inner })
@@ -66,11 +69,132 @@ bun add @1gr14/error0
 
 Bun 1+ or Node.js 20+. ESM only.
 
+## Give your errors typed fields
+
+A bare message isn't enough. You want an HTTP status, a machine-readable code,
+whatever your app needs. Add a field with `.use('prop', name, options)` — the
+same call the hero used inline. A field is up to four small functions, and only
+the first is required:
+
+```ts
+const AppError = Error0.use('prop', 'status', {
+  init: (input: number) => input,
+  resolve: ({ flow }) => flow.find(Boolean),
+  serialize: ({ resolved }) => resolved,
+  deserialize: ({ value }) => (typeof value === 'number' ? value : undefined),
+})
+
+const err = new AppError('User not found', { status: 404 })
+err.status // 404  ← typed as number | undefined
+```
+
+Each function does one job. Here's what each one is for.
+
+### `init` — declare and accept the input
+
+`init` types the value you pass in. Writing `(input: number)` is what makes
+`new AppError('...', { status })` expect a number — the input type comes
+straight from `init`'s first argument. Its return type is what gets stored, so
+you can transform on the way in, not just pass the value through:
+
+```ts
+init: (input: number) => input // status is a number
+init: (name: 'on' | 'off') => name === 'on' // accept a name, store a boolean
+```
+
+A field is never required on input — `init` types the value _when_ you pass one,
+it never forces you to. That's the rule that lets
+[`from()` turn any error into yours](#any-error-becomes-your-error).
+
+Skip `init` and the field drops out of the constructor — you can't pass it at
+all. It becomes a computed field, filled only from a cause or an
+[`adapt` hook](#adapt-foreign-errors-at-construction), and its type then comes
+from what `resolve` returns:
+
+```ts
+// no init → not accepted in `new AppError(...)`, derived instead
+const AppError = Error0.use('prop', 'fingerprint', {
+  resolve: ({ error }) => `${error.name}:${error.message}`, // err.fingerprint is a string
+})
+```
+
+### `resolve` — compute the value you read
+
+`resolve` decides what `err.status` returns. It sees this field's value at every
+level of the cause chain and returns the one to expose:
+
+- **`flow`** — this field's value on each link `is()` recognizes as yours,
+  nearest first. Foreign links (a native `Error`, a `ZodError`) are skipped —
+  they carry none of your fields. `flow.find(Boolean)` means "the first status
+  anyone set".
+- **`own`** — just this error's own value, before any chain logic.
+- **`error`** — the error instance itself (call `error.causes()` to walk the
+  whole chain, foreign links included).
+
+Omit `resolve` (or pass `resolve: false`) and the field just returns its own
+value, ignoring causes. Return a constant and every error reports it. It's the
+same lever the chain-merging plugins (`tags`, `meta`, `headers`) pull — more on
+the flow in [the next section](#fields-flow-through-cause-chains).
+
+### `serialize` — write the value to JSON
+
+`serialize` is the field's half of the JSON boundary, going out. Return the
+value to put in the JSON, or `undefined` to drop the field. It receives
+`{ own, flow, resolved, error, isPublic }` — most often you just return
+`resolved`. The `isPublic` flag is how a field shows in the public output or
+only the private one (see
+[Public and private serialization](#public-and-private-serialization)). Pass
+`serialize: false` to keep the field server-only — it never crosses the wire.
+
+### `deserialize` — read the value back from JSON
+
+`deserialize` is the other half, coming back in: it turns the raw JSON value
+into your field when `from()` rebuilds the error. It receives
+`{ value, record }` — `value` is the raw field, `record` is the whole serialized
+object if you need a sibling. Validate as you read:
+`typeof value === 'number' ? value : undefined` drops anything that isn't a
+number, so a malformed payload can't smuggle in a wrong type. Pass
+`deserialize: false` and the field is never read back.
+
+## Fields flow through cause chains
+
+Here's why `resolve` takes a `flow`. When you wrap an error, the inner error's
+status shouldn't vanish. `flow` is this field's value on each error in the chain
+that `is()` recognizes as yours, nearest first — so `flow.find(Boolean)` means
+"the first status anyone set":
+
+```ts
+const inner = new AppError('DB unreachable', { status: 503 })
+const outer = new AppError('Could not load user', { cause: inner })
+
+outer.status // 503  ← flowed up from `inner`
+outer.flow('status') // [undefined, 503]  — outer set nothing, inner set 503
+outer.resolve() // { status: 503 } — every field resolved into one object
+inner.own // { status: 503 } — the raw fields set on an error, before resolve runs
+```
+
+Only links that are your error feed the flow — a native `Error`, a `ZodError`,
+or any other foreign cause is skipped, because it carries no fields of yours.
+The two `causes()` helpers make the line explicit:
+
+```ts
+const outer = new AppError('Failed', { cause: new TypeError('boom') })
+
+outer.causes() // [outer, TypeError]  — every link, foreign ones included
+outer.causes(true) // [outer]         — only links that are your error
+Error0.causes(outer) // the same walk, also available as a static
+```
+
+So `flow` walks `causes(true)`; reach for `causes()` when you want the raw
+chain, foreign errors and all. Either walk is capped at
+`Error0.MAX_CAUSES_DEPTH` (default `99`) to guard against cycles.
+
 ## Any error becomes your error
 
-Start here, because this is the problem `error0` was built for. You catch an
-`unknown`. You want a typed error you can trust. `Error0.from()` gives you one,
-every time:
+So far every error here is one you built. But most errors you catch came from
+somewhere else — a native `Error`, an Axios failure, a string someone threw.
+Those become your error too. `Error0.from()` gives you a typed error you can
+trust, every time:
 
 ```ts
 import { Error0 } from '@1gr14/error0'
@@ -151,62 +275,7 @@ in
 [Adapt foreign errors at construction](#adapt-foreign-errors-at-construction).)
 
 One class to catch, one `is()`, one serialize contract — every concern lives as
-a typed field on it. The next sections show how fields work.
-
-## Give your errors typed fields
-
-A bare message isn't enough. You want an HTTP status, a code, whatever your app
-needs. Add a field with `.use('prop', name, options)`. A field is up to four
-small functions, and each one exists for a reason:
-
-```ts
-const AppError = Error0.use('prop', 'status', {
-  // init: declares the input type (here: number); can also transform it
-  init: (input: number) => input,
-  // resolve: builds err.status from `flow` — this error's value + all its causes'
-  resolve: ({ flow }) => flow.find(Boolean),
-  // serialize: turn the value into JSON
-  serialize: ({ resolved }) => resolved,
-  // deserialize: read the value back when rebuilding from JSON
-  deserialize: ({ value }) => (typeof value === 'number' ? value : undefined),
-})
-
-const err = new AppError('User not found', { status: 404 })
-err.status // 404  ← typed as number | undefined
-```
-
-- **`init`** mainly declares the input type. Writing `(input: number)` is what
-  makes `new AppError('...', { status })` expect a number. (Note the field is
-  still optional — see [the from() rule](#any-error-becomes-your-error).) You
-  can transform here too, e.g. a status _name_ → a number.
-- **`resolve`** decides what `err.status` returns. `flow` is the array of values
-  down the cause chain — this error's own value plus every cause's, nearest
-  first. `flow.find(Boolean)` means "the first one anyone set". More on this
-  next.
-- **`serialize`** / **`deserialize`** are the two ends of the JSON boundary. No
-  field crosses the wire without them — pass `false` to keep a field
-  server-only.
-
-## Fields flow through cause chains
-
-Here's why `resolve` takes a `flow`. When you wrap an error, the inner error's
-status shouldn't vanish. `flow` is this error's value plus every cause's value,
-nearest first — so `flow.find(Boolean)` means "the first status anyone set":
-
-```ts
-const inner = new AppError('DB unreachable', { status: 503 })
-const outer = new AppError('Could not load user', { cause: inner })
-
-outer.status // 503  ← flowed up from `inner`
-outer.flow('status') // [undefined, 503]  — outer set nothing, inner set 503
-inner.own // { status: 503 } — the raw fields set on an error, before resolve runs
-Error0.causes(outer, true) // [outer, inner] — the Error0 links in the chain
-```
-
-You decide the rule. Omit `resolve` (or `resolve: false`) and `err.status` is
-just this error's own value, ignoring causes. Return `500` and every error
-reports `500`. The flow is yours to shape. (Chain walks are capped at
-`Error0.MAX_CAUSES_DEPTH`, default `99`, to guard against cycles.)
+a typed field on it.
 
 ## Add behavior with methods
 
@@ -421,6 +490,10 @@ The common fields are already written. Import only what you use, each from its
 own path under `@1gr14/error0/plugins/*` (tree-shakeable). Every plugin is a
 function you call and pass to `.use()`.
 
+Each one is a small, readable function built on the same hooks you just saw —
+the **source** link under each is worth opening, and it's the best template for
+writing your own.
+
 Each field plugin below accepts a `transport` option — `'public'`, `'private'`
 (default), or `'none'` — that decides whether its field shows up in
 `serializePublic()`, only in `serializePrivate()`, or never.
@@ -429,11 +502,14 @@ Each field plugin below accepts a `transport` option — `'public'`, `'private'`
 
 #### `statusPlugin` — an HTTP-style `status`
 
+[`src/plugins/status.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/status.ts)
+
 ```ts
 import { statusPlugin } from '@1gr14/error0/plugins/status'
 
 const AppError = Error0.use(statusPlugin({ transport: 'public' }))
-new AppError('Not found', { status: 404 }).status // 404
+const err = new AppError('Not found', { status: 404 })
+err.status // 404
 ```
 
 Pass a `statuses` map to accept a status by name, and `strict` to reject any
@@ -443,10 +519,13 @@ number that isn't in it:
 const AppError = Error0.use(
   statusPlugin({ statuses: { NOT_FOUND: 404, FORBIDDEN: 403 }, strict: true }),
 )
-new AppError('x', { status: 'NOT_FOUND' }).status // 404
+const err = new AppError('x', { status: 'NOT_FOUND' })
+err.status // 404
 ```
 
 #### `codePlugin` — a machine-readable `code`
+
+[`src/plugins/code.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/code.ts)
 
 Pass `codes` to lock the field to a typed union; only those codes type-check.
 
@@ -461,8 +540,11 @@ new AppError('x', { code: 'NOT_FOUND' }) // 'NOPE' would be a type error
 
 #### `codeStatusPlugin` — `code` and `status` together
 
+[`src/plugins/code-status.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/code-status.ts)
+
 A `{ CODE: status }` map adds both fields and auto-fills the `status` from the
-`code`. Use `true` for a code that has no fixed status.
+`code` (unless you pass a `status` yourself). Use `true` for a code that has no
+fixed status.
 
 ```ts
 import { codeStatusPlugin } from '@1gr14/error0/plugins/code-status'
@@ -472,10 +554,13 @@ const AppError = Error0.use(
     codes: { NOT_FOUND: 404, FORBIDDEN: 403, RATE_LIMITED: true },
   }),
 )
-new AppError('x', { code: 'NOT_FOUND' }).status // 404 — filled from the map
+const err = new AppError('x', { code: 'NOT_FOUND' })
+err.status // 404 — filled from the map
 ```
 
 #### `tagsPlugin` — a `tags` set + `hasTag()`
+
+[`src/plugins/tags.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/tags.ts)
 
 Tags merge and dedupe across the whole cause chain.
 
@@ -496,16 +581,28 @@ deserializing), `transport`.
 
 #### `metaPlugin` — free-form `meta`
 
-JSON-safe metadata, merged across causes (nearer errors win on key conflicts).
+[`src/plugins/meta.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/meta.ts)
+
+JSON-safe metadata. Wrap one error in another and the `meta` of the whole chain
+merges into one object — nearer errors win on a key conflict.
 
 ```ts
 import { metaPlugin } from '@1gr14/error0/plugins/meta'
 
 const AppError = Error0.use(metaPlugin())
-new AppError('x', { meta: { userId: 7, attempt: 2 } }).meta // { userId: 7, attempt: 2 }
+
+const inner = new AppError('DB down', { meta: { userId: 7, attempt: 1 } })
+const outer = new AppError('Load failed', {
+  cause: inner,
+  meta: { attempt: 2 },
+})
+
+outer.meta // { userId: 7, attempt: 2 } — merged up the chain; outer wins on `attempt`
 ```
 
 #### `expectedPlugin` — an `expected` flag + `isExpected()`
+
+[`src/plugins/expected.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/expected.ts)
 
 Mark errors that are part of normal flow (a 404, a validation miss) so you don't
 log them as crashes. A single `expected: false` anywhere in the chain wins.
@@ -514,12 +611,15 @@ log them as crashes. A single `expected: false` anywhere in the chain wins.
 import { expectedPlugin } from '@1gr14/error0/plugins/expected'
 
 const AppError = Error0.use(expectedPlugin())
-new AppError('Not found', { expected: true }).isExpected() // true
+const err = new AppError('Not found', { expected: true })
+err.isExpected() // true
 ```
 
 Options: `transport`, and `override` to force the verdict from the error itself.
 
 #### `headersPlugin` — HTTP `headers`
+
+[`src/plugins/headers.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/headers.ts)
 
 Headers to attach to a response, merged across the chain. Never serialized.
 
@@ -527,10 +627,13 @@ Headers to attach to a response, merged across the chain. Never serialized.
 import { headersPlugin } from '@1gr14/error0/plugins/headers'
 
 const AppError = Error0.use(headersPlugin())
-new AppError('Rate limited', { headers: { 'Retry-After': '30' } }).headers
+const err = new AppError('Rate limited', { headers: { 'Retry-After': '30' } })
+err.headers
 ```
 
 #### `responsePlugin` — a `Response` object
+
+[`src/plugins/response.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/response.ts)
 
 Carry a `fetch` `Response` with the error (to read its body later, say). Never
 serialized.
@@ -539,10 +642,13 @@ serialized.
 import { responsePlugin } from '@1gr14/error0/plugins/response'
 
 const AppError = Error0.use(responsePlugin())
-new AppError('Upstream failed', { response }).response // the Response
+const err = new AppError('Upstream failed', { response })
+err.response // the Response
 ```
 
 #### `redirectPlugin` — a navigation `redirect` (for point0)
+
+[`src/plugins/point0-redirect.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/point0-redirect.ts)
 
 Attach a redirect to an error. Built for [point0](https://1gr14.dev/point0); a
 `RedirectTask` thrown as a `cause` is adopted automatically.
@@ -551,8 +657,10 @@ Attach a redirect to an error. Built for [point0](https://1gr14.dev/point0); a
 import { redirectPlugin } from '@1gr14/error0/plugins/point0-redirect'
 
 const AppError = Error0.use(redirectPlugin())
-new AppError('Go to login', { redirect: { to: '/login', status: 302 } })
-  .redirect
+const err = new AppError('Go to login', {
+  redirect: { to: '/login', status: 302 },
+})
+err.redirect
 ```
 
 ### Serialization & adapt plugins
@@ -561,6 +669,8 @@ These don't add a field of their own — they shape how the error serializes or
 adapts.
 
 #### `causePlugin` — carry the cause chain across the wire
+
+[`src/plugins/cause.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/cause.ts)
 
 By default a `.cause` isn't serialized — it can't always survive JSON.
 `causePlugin` makes it travel: nested `Error0` causes are rebuilt by `from()`,
@@ -578,8 +688,11 @@ Option: `transport` (default `'private'` — kept out of `serializePublic()`).
 
 #### `stackPlugin` — the stack policy, as a plugin
 
-The core already hides the stack from public output; this makes that policy
-explicit and switchable. `transport: 'public'` sends the stack to clients too,
+[`src/plugins/stack.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/stack.ts)
+
+The core already keeps the stack in `serializePrivate()` only; this plugin
+spells that policy out and makes it switchable. `transport: 'private'` (default)
+keeps the stack out of public output, `'public'` sends it to clients too,
 `'none'` strips it everywhere.
 
 ```ts
@@ -589,6 +702,8 @@ const AppError = Error0.use(stackPlugin({ transport: 'none' })) // never seriali
 ```
 
 #### `messageMergePlugin` — one message from the whole chain
+
+[`src/plugins/message-merge.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/message-merge.ts)
 
 On serialize, joins every error's message down the cause chain into one string.
 
@@ -603,6 +718,8 @@ Options: `delimiter` (default `': '`), `fallback` (default `'Unknown error'`).
 
 #### `stackMergePlugin` — one stack from the whole chain
 
+[`src/plugins/stack-merge.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/stack-merge.ts)
+
 Like `messageMergePlugin`, but joins the stacks of every cause.
 
 ```ts
@@ -615,6 +732,8 @@ Options: `transport` (default `'private'`), `delimiter` (default `'\n'`).
 
 #### `flatOriginalPlugin` — adopt a native cause's message and stack
 
+[`src/plugins/flat-original.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/flat-original.ts)
+
 When you wrap a plain native `Error`, this hoists its message and stack onto
 your `Error0` (and unwraps the cause), so the top error reads like the original
 instead of a generic wrapper.
@@ -623,7 +742,8 @@ instead of a generic wrapper.
 import { flatOriginalPlugin } from '@1gr14/error0/plugins/flat-original'
 
 const AppError = Error0.use(flatOriginalPlugin())
-AppError.from(new Error('socket hang up')).message // 'socket hang up'
+const err = AppError.from(new Error('socket hang up'))
+err.message // 'socket hang up'
 ```
 
 Option: `prefix`, prepended to the adopted message.
