@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.3 — 2026-06-22
+
 ## 0.4.2 — 2026-06-15
 
 - Maintenance: release tooling moved from semantic-release to in-house scripts
