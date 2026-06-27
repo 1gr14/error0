@@ -2,8 +2,10 @@
 # Grouped + weekly so it's at most a couple of PRs per week, not noise.
 version: 2
 updates:
+  # Target dev, not default-branch main: bumps reach main/next via the release fast-forward (keeps main a ff of dev).
   - package-ecosystem: npm
     directory: '/'
+    target-branch: 'dev'
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -21,6 +23,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: '/'
+    target-branch: 'dev'
     schedule:
       interval: weekly
     groups:
