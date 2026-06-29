@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.5 — 2026-06-29
+
 ## 0.4.4 — 2026-06-22
 
 - Docs: reworked the README — a per-field walkthrough of `init` / `resolve` /

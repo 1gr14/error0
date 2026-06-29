@@ -1,6 +1,6 @@
 {
   "name": "@1gr14/error0",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "A composable, plugin-based Error class for TypeScript — typed metadata, cause chains, HTTP/status helpers, and full serialize/deserialize round-trips.",
   "keywords": [
     "error",
