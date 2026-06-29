@@ -2,7 +2,7 @@
 Thanks for the PR.
 
 Commits must follow Conventional Commits (https://www.conventionalcommits.org/).
-We generate the version and changelog from them.
+They keep the history readable; they do not drive versioning (the maintainer sets the version with `bun run release`).
 
   feat: add tags plugin
   fix: handle undefined cause in deserialize

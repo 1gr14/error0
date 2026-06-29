@@ -9,6 +9,7 @@
  * stable x.y.z under `latest` (see channelFor / scripts/publish.ts).
  *
  * bun run check:channel # tag from GITHUB_REF_NAME when on a tag (CI); else informational bun run check:channel v0.1.0
+ *
  * # explicit tag
  */
 import { readFileSync } from 'node:fs'
