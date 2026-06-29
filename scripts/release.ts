@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 /**
- * release — bump this package to the next version and (on a stable cut) promote the CHANGELOG "Unreleased" section.
- * Then you review, commit, tag, and push — CI publishes (scripts/publish.ts). Nothing is derived from commit messages;
- * the version is always your explicit choice.
+ * release — bump this package to the next version, promote the CHANGELOG "Unreleased" section (stable only), then
+ * commit + tag `v<version>`. You review and push — the tag is what triggers CI to publish (scripts/publish.ts). Nothing
+ * is pushed for you; nothing is derived from commit messages.
  *
  * bun run release patch 0.1.0 → 0.1.1 bun run release minor 0.1.0 → 0.2.0 bun run release prerelease 0.1.0 →
  * 0.1.0-next.0 (re-run → -next.1, -next.2 …) bun run release stable 0.2.0-next.3 → 0.2.0 (strip the prerelease suffix)
- * bun run release 0.3.0 explicit version (also accepts 0.3.0-next.0)
+ * bun run release 0.3.0 explicit version (also accepts 0.3.0-next.0). Add --no-git to bump only (skip commit + tag).
  *
- * Prereleases publish from `next` (dist-tag next); stable from `main` (dist-tag latest) — the branch ↔ version
- * invariant is enforced by scripts/check-channel.ts in CI and on pre-push. patch/minor always stay in 0.x — they can
- * never reach 1.0.0. An explicit jump out of 0.x is refused on purpose (edit this file if you ever truly mean 1.0).
+ * Classic single-branch model: everything lands on `main` and `v*` tags drive publishing. The dist-tag is derived from
+ * the version (prerelease → `next`, stable → `latest`); the tag ↔ version match is enforced by scripts/check-channel.ts
+ * in CI and on pre-push. The major version is PINNED (see PINNED_MAJOR below) — no command can raise it.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -20,6 +20,16 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const readJson = (p: string) => JSON.parse(readFileSync(p, 'utf-8'))
 
 const PRE = 'next' // prerelease identifier + channel name
+
+// The ONLY major version this script will ever emit. There is deliberately NO command or CLI flag that
+// can raise the major — a new major must be HARDCODED by bumping this constant by hand. Any release whose
+// resulting major differs from PINNED_MAJOR is refused below, so a major can never be reached accidentally
+// or automatically (a wrong major is a one-way, ecosystem-breaking publish).
+//
+// ⚠️ AGENTS / AI ASSISTANTS: NEVER change PINNED_MAJOR yourself, and never edit the guard below to get
+// past it. Cutting a major is a human-only decision — only the maintainer edits this line, by hand, on
+// purpose. If asked to "release 1.0"/"bump the major", STOP and have the human change this constant.
+const PINNED_MAJOR = 0
 
 const arg = process.argv[2]
 if (!arg) {
@@ -51,8 +61,12 @@ else {
   process.exit(1)
 }
 
-if (maj === 0 && Number(next.split('.')[0]) !== 0) {
-  console.error(`Refusing ${current} → ${next}: that leaves 0.x. Edit scripts/release.ts if you truly mean 1.0.`)
+const nextMajor = Number(next.split('.')[0])
+if (nextMajor !== PINNED_MAJOR) {
+  console.error(
+    `Refusing ${current} → ${next}: major ${nextMajor} ≠ pinned major ${PINNED_MAJOR}. ` +
+      `Majors are never reachable by command — a human must hardcode PINNED_MAJOR in scripts/release.ts first.`,
+  )
   process.exit(1)
 }
 
@@ -77,11 +91,31 @@ if (!isPre && existsSync(changelogPath)) {
   }
 }
 
-const branch = isPre ? 'next' : 'main'
-// Annotated tag (-a) on purpose: `git push --follow-tags` only pushes annotated tags, never lightweight ones.
-const tag = isPre ? '' : ` && git tag -a v${next} -m v${next}`
-console.info(
-  `\nReady (${next}, channel: ${branch}). Review the diff, then:\n` +
-    `  git add -A && git commit -m "chore(release): ${next}"${tag}\n` +
-    `  git checkout ${branch} && git merge --ff-only dev && git push origin ${branch}${tag ? ' --follow-tags' : ''}   # CI publishes`,
-)
+const tagName = `v${next}`
+
+if (process.argv.includes('--no-git')) {
+  console.info(
+    `\nBumped to ${next} (--no-git: no commit/tag made). When ready:\n` +
+      `  git add -A && git commit -m "chore(release): ${tagName}" && git tag -a ${tagName} -m ${tagName}\n` +
+      `  git push origin main --follow-tags   # the tag triggers CI to publish`,
+  )
+} else {
+  // Commit + tag together so the bump and the tag can never drift (CI re-asserts tag ↔ version before publishing).
+  // Annotated tag (-a) on purpose: `git push --follow-tags` only pushes annotated tags, never lightweight ones.
+  const git = (...args: string[]) => {
+    const r = Bun.spawnSync(['git', ...args], { cwd: rootDir, stdout: 'inherit', stderr: 'inherit' })
+    if (!r.success) {
+      console.error(`git ${args[0]} failed`)
+      process.exit(1)
+    }
+  }
+  git('add', '-A')
+  git('commit', '-m', `chore(release): ${tagName}`)
+  git('tag', '-a', tagName, '-m', tagName)
+  console.info(
+    `\nCommitted + tagged ${tagName} (dist-tag: ${isPre ? 'next' : 'latest'}). Nothing pushed yet — review with ` +
+      `\`git show ${tagName}\`, then publish with:\n` +
+      `  git push origin main --follow-tags   # the tag triggers CI to publish\n` +
+      `To undo before pushing: git tag -d ${tagName} && git reset --soft HEAD~1`,
+  )
+}

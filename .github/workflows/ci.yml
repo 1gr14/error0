@@ -1,15 +1,25 @@
 name: CI
 
+# Classic OSS model: one `main` trunk, contributors fork → PR → `main`, and a `v*` tag is the only thing
+# that publishes. Pushing code never releases.
+#   pull_request → main   the gate: build + type-check + lint + tests + smoke (forks run without secrets)
+#   push tag v*           the same gate, then publish (dist-tag from the version)
+# `main` is not gated on push — it only changes via an already-tested PR or a release commit (gated by its
+# tag), so a push-to-main gate would just re-test. Run the gate on a branch ad-hoc with workflow_dispatch.
 on:
-  push:
-    branches: [main, next]
   pull_request:
-    branches: [main, next]
-  workflow_dispatch: # manual re-trigger (publish is idempotent)
+    branches: [main]
+  push:
+    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write # <-- required for OIDC/Trusted Publisher (npm provenance)
+  id-token: write # OIDC: npm Trusted Publisher (provenance) + tokenless Codecov
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never cancel a tag publish mid-flight
 
 jobs:
   build:
@@ -92,16 +102,15 @@ jobs:
       - name: Smoke test built package
         run: node scripts/smoke.mjs
 
-  # Publish to npm. Idempotent: publishes only if the package's current version isn't on npm yet
-  # (version bumps happen locally via `bun run release`). dist-tag is derived from the version
-  # (prerelease x.y.z-next.N → next, stable x.y.z → latest). Auth is npm OIDC Trusted Publisher
-  # (→ provenance), so no NPM_TOKEN — the workflow filename (ci.yml) must match the trusted-publisher
-  # config on npm. Both main (latest) and next (prerelease) publish.
+  # Publish to npm — ONLY on a `v*` tag (never from a PR or a branch push; a fork can't push a tag, so
+  # untrusted code can never publish). Idempotent: publishes only if the version isn't on npm yet (bumps
+  # happen locally via `bun run release`). dist-tag is derived from the version (prerelease x.y.z-next.N →
+  # next, stable x.y.z → latest). Auth is npm OIDC Trusted Publisher (→ provenance), no NPM_TOKEN — the
+  # workflow filename (ci.yml) must match the trusted-publisher config on npm.
   publish:
     needs: smoke
     runs-on: ubuntu-latest
-    if: >
-      github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next')
+    if: ${{ github.ref_type == 'tag' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -130,9 +139,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Channel guard: refuse to publish if the version doesn't match the branch
-      # (next ↔ -next prerelease, main ↔ stable). publish.ts re-asserts this too.
-      - name: Channel guard
+      # Tag guard: the tag MUST equal v${version in package.json}, so the bump and the tag can't drift.
+      - name: Channel guard (tag ↔ version)
         run: bun run check:channel
 
       - name: Publish package

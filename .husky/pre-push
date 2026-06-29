@@ -1,8 +1,7 @@
-# Channel guard: a push to main/next must carry a matching version (stable ↔ main, -next ↔ next).
-# CI enforces this too — this is just the early local check (uses the working-tree version).
+# Tag guard: pushing a `v*` release tag must carry a matching package.json version (CI asserts this too —
+# this is just the early local check against the working-tree version). Branch pushes never publish.
 while read -r _local _lsha remote _rsha; do
   case "$remote" in
-    refs/heads/main) bun run check:channel main || exit 1 ;;
-    refs/heads/next) bun run check:channel next || exit 1 ;;
+    refs/tags/v*) bun run check:channel "${remote#refs/tags/}" || exit 1 ;;
   esac
 done

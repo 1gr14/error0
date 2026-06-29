@@ -4,8 +4,8 @@
  * skipped, so it's safe to run on every push. Runs in CI with npm auth (OIDC Trusted Publisher → provenance).
  *
  * The dist-tag comes from the version: a prerelease x.y.z-next.N publishes under `--tag next`, a stable x.y.z under
- * `latest`. The branch ↔ version channel invariant (scripts/check-channel.ts) is asserted first, so a prerelease can
- * never land on main/latest (and a stable can never land on next).
+ * `latest`. The tag ↔ version guard (scripts/check-channel.ts) is asserted first, so the git tag that triggered the
+ * release must match the version being published. Provenance comes automatically from OIDC Trusted Publishing.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
