@@ -5,6 +5,13 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.6 — 2026-06-29
+
+- `plugins/point0-redirect`: use the real `RedirectTask` from `@point0/core`
+  instead of a hardcoded local copy (now that Point0 is published). `@point0/core`
+  is a dev-only dependency kept external in the build, so the base library stays
+  standalone — only the `point0-redirect` subpath needs a Point0 app to supply it.
+
 ## 0.4.5 — 2026-06-29
 
 ## 0.4.4 — 2026-06-22

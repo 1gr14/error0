@@ -1,6 +1,6 @@
 {
   "name": "@1gr14/error0",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "A composable, plugin-based Error class for TypeScript — typed metadata, cause chains, HTTP/status helpers, and full serialize/deserialize round-trips.",
   "keywords": [
     "error",
@@ -92,6 +92,7 @@
     "@arethetypeswrong/cli": "^0.18.3",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
+    "@point0/core": "^0.1.2",
     "@types/bun": "^1.3.14",
     "@types/node": "^20.0.0",
     "eslint": "^10.4.1",
