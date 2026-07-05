@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.7 — 2026-07-05
+
 - `plugins/level`: new `levelPlugin` — a typed `level` field an error carries
   about its own severity, independent of how the code reports it, so a logger can
   read `error.level` and honor it (e.g. downgrade a `logger.error(err)` to a
