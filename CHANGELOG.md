@@ -5,6 +5,13 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- `plugins/level`: new `levelPlugin` — a typed `level` field an error carries
+  about its own severity, independent of how the code reports it, so a logger can
+  read `error.level` and honor it (e.g. downgrade a `logger.error(err)` to a
+  `warn` line). Pass `levels` ordered most-dangerous-first; across a cause chain
+  the most dangerous level present wins. `transport` and unknown-value handling
+  mirror `plugins/code`.
+
 ## 0.4.6 — 2026-06-29
 
 - `plugins/point0-redirect`: use the real `RedirectTask` from `@point0/core`
