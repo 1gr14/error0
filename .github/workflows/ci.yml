@@ -122,8 +122,10 @@ jobs:
           registry-url: https://registry.npmjs.org
           scope: '@1gr14'
 
+      # Pinned to 11.x: `npm@latest` is 12.x now, and installing it over the npm that Node 24 bundles leaves a
+      # global tree without `sigstore`, so the provenance publish dies with MODULE_NOT_FOUND.
       - name: Upgrade npm (OIDC Trusted Publisher needs npm >= 11.5.1)
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
