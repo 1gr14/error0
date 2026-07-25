@@ -5,6 +5,8 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+## 0.4.8 — 2026-07-25
+
 - `plugins/prevent-retry`: new `preventRetryPlugin` — a `preventRetry` flag that
   tells a retrying consumer (point0's queries and its socket connect/join
   retries honor it) to sit out its automatic retries. The first explicit boolean
