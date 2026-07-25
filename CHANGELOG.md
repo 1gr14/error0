@@ -5,6 +5,14 @@ work; `bun run release` promotes that section to the new version.
 
 ## Unreleased
 
+- `plugins/prevent-retry`: new `preventRetryPlugin` — a `preventRetry` flag that
+  tells a retrying consumer (point0's queries and its socket connect/join
+  retries honor it) to sit out its automatic retries. The first explicit boolean
+  in the flow chain wins — the error's own value before its causes — so an outer
+  `preventRetry: false` lifts an inner `true`. `transport` defaults to `'public'`
+  (unlike the other field plugins): the flag exists for the client to act on, so
+  only a resolved `true` travels the wire.
+
 ## 0.4.7 — 2026-07-05
 
 - `plugins/level`: new `levelPlugin` — a typed `level` field an error carries

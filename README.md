@@ -617,6 +617,28 @@ err.isExpected() // true
 
 Options: `transport`, and `override` to force the verdict from the error itself.
 
+#### `preventRetryPlugin` — a `preventRetry` flag
+
+[`src/plugins/prevent-retry.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/prevent-retry.ts)
+
+"And don't try this again" — a retrying consumer (point0's queries and its
+socket connect/join retries honor it) sits out its automatic retries when the
+error says so. The first explicit boolean in the chain wins, the error's own
+value before its causes — wrapping an inner `preventRetry: true` with an outer
+`preventRetry: false` lifts the block.
+
+```ts
+import { preventRetryPlugin } from '@1gr14/error0/plugins/prevent-retry'
+
+const AppError = Error0.use(preventRetryPlugin())
+const err = new AppError('Unauthorized', { preventRetry: true })
+err.preventRetry // true — the client stops knocking
+```
+
+Options: `transport` — defaulting to `'public'`, unlike the other field plugins:
+the flag exists for the client to act on, so it travels in `serializePublic()`
+(only a resolved `true` is sent; `false` is the default behavior).
+
 #### `headersPlugin` — HTTP `headers`
 
 [`src/plugins/headers.ts`](https://github.com/1gr14/error0/blob/main/src/plugins/headers.ts)
