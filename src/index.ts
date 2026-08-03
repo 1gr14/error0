@@ -24,11 +24,9 @@ type ErrorPluginPropSerializeOptions<
   isPublic: boolean
 }
 type ErrorPluginPropSerialize<TOutputValue, TError extends Error0, TResolveValue extends TOutputValue | undefined> =
-  | ((options: ErrorPluginPropSerializeOptions<TOutputValue, TError, TResolveValue>) => unknown)
-  | false
+  ((options: ErrorPluginPropSerializeOptions<TOutputValue, TError, TResolveValue>) => unknown) | false
 type ErrorPluginPropDeserialize<TOutputValue> =
-  | ((options: { value: unknown; record: Record<string, unknown> }) => TOutputValue | undefined)
-  | false
+  ((options: { value: unknown; record: Record<string, unknown> }) => TOutputValue | undefined) | false
 type ErrorPluginPropOptionsResolveOptions<TOutputValue, TError extends Error0> = {
   own: TOutputValue | undefined
   flow: Array<TOutputValue | undefined>
@@ -177,9 +175,11 @@ type ErrorInputBase = {
   cause?: unknown
 }
 type ErrorInputPluginProps<TPluginsMap extends ErrorPluginsMap> = {
-  [TKey in keyof TPluginsMap['props'] as IsOnlyUndefined<TPluginsMap['props'][TKey]['init']> extends true
-    ? never
-    : TKey]?: TPluginsMap['props'][TKey]['init']
+  [
+    TKey in keyof TPluginsMap['props'] as IsOnlyUndefined<TPluginsMap['props'][TKey]['init']> extends true
+      ? never
+      : TKey
+  ]?: TPluginsMap['props'][TKey]['init']
 }
 type ErrorInput<TPluginsMap extends ErrorPluginsMap> =
   IsEmptyObject<TPluginsMap['props']> extends true
